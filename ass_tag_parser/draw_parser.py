@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Iterable, Optional, Union, cast
 
-from ass_tag_parser.common import Meta
 from ass_tag_parser.draw_struct import (
     AssDrawCmd,
     AssDrawCmdBezier,
@@ -101,11 +100,6 @@ def _parse_draw_commands(ctx: _ParseContext) -> Iterable[AssDrawCmd]:
             continue
         else:
             raise ParseError(start_pos, "unknown draw command " + cmd)
-        ret.meta = Meta(
-            start_pos,
-            ctx.io.global_pos,
-            ctx.io.global_text[start_pos : ctx.io.global_pos],
-        )
         yield ret
 
 

@@ -1,36 +1,91 @@
+from collections import Counter
 import re
 from dataclasses import dataclass
 from functools import cache
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, List, Optional, Union
+import string
+from itertools import takewhile
 
-from ass_tag_parser.ass_struct import (
-    AssItem,
+from ass_tag_parser.ass_item.ass_tag import (
     AssTag,
     AssTagAlignment,
     AssTagAlpha,
-    AssTagAnimation,
-    AssTagBaselineOffset,
+    AssTagBackgroundAlpha,
+    AssTagBackgroundColor,
     AssTagBlurEdges,
     AssTagBlurEdgesGauss,
     AssTagBold,
     AssTagBorder,
     AssTagClipRectangle,
-    AssTagClipVector,
-    AssTagColor,
-    AssTagComment,
-    AssTagDraw,
     AssTagFade,
     AssTagFadeComplex,
     AssTagFontEncoding,
     AssTagFontName,
+    AssTagOutlineAlpha,
+    AssTagOutlineColor,
+    AssTagPrimaryAlpha,
+    AssTagPrimaryColor,
+    AssTagSecondaryAlpha,
+    AssTagSecondaryColor,
+    AssTagXShear,
+    AssTagYShear,
+)
+
+from ass_tag_parser.ass_item.ass_invalid_tag import AssInvalidTagPrimaryColor
+from ass_tag_parser.ass_item.ass_invalid_tag import (
+    AssInvalidTagAlignment,
+    AssInvalidTagAlpha,
+    AssInvalidTagBackgroundAlpha,
+    AssInvalidTagBackgroundColor,
+    AssInvalidTagBaselineOffset,
+    AssInvalidTagBlurEdges,
+    AssInvalidTagBlurEdgesGauss,
+    AssInvalidTagBold,
+    AssInvalidTagBorder,
+    AssInvalidTagFontEncoding,
+    AssInvalidTagFontScale,
+    AssInvalidTagFontSize,
+    AssInvalidTagFontXScale,
+    AssInvalidTagFontYScale,
+    AssInvalidTagItalic,
+    AssInvalidTagLetterSpacing,
+    AssInvalidTagOutlineAlpha,
+    AssInvalidTagOutlineColor,
+    AssInvalidTagPrimaryAlpha,
+    AssInvalidTagSecondaryAlpha,
+    AssInvalidTagSecondaryColor,
+    AssInvalidTagShadow,
+    AssInvalidTagStrikeout,
+    AssInvalidTagUnderline,
+    AssInvalidTagXBorder,
+    AssInvalidTagXRotation,
+    AssInvalidTagXShadow,
+    AssInvalidTagXShear,
+    AssInvalidTagYBorder,
+    AssInvalidTagYRotation,
+    AssInvalidTagYShadow,
+    AssInvalidTagYShear,
+    AssInvalidTagZRotation,
+)
+from ass_tag_parser.ass_item.ass_item import (
+    AssItem,
+    AssTagListEnding,
+    AssTagListOpening,
+    AssText,
+)
+from ass_tag_parser.ass_item.ass_tag import (
+    AssTagAnimation,
+    AssTagBaselineOffset,
+    AssTagDraw,
+    AssTagFontScale,
     AssTagFontSize,
     AssTagFontXScale,
     AssTagFontYScale,
     AssTagItalic,
     AssTagKaraoke,
+    AssTagKaraokeFill,
+    AssTagKaraokeOutline,
     AssTagLetterSpacing,
-    AssTagListEnding,
-    AssTagListOpening,
     AssTagMove,
     AssTagPosition,
     AssTagResetStyle,
@@ -42,15 +97,21 @@ from ass_tag_parser.ass_struct import (
     AssTagXBorder,
     AssTagXRotation,
     AssTagXShadow,
-    AssTagXShear,
     AssTagYBorder,
     AssTagYRotation,
     AssTagYShadow,
-    AssTagYShear,
     AssTagZRotation,
-    AssText,
+    WrapStyle,
 )
-from ass_tag_parser.common import Meta
+
+
+from ass_tag_parser.ass_type_parser import (
+    color_arg,
+    float_str_to_float,
+    hex_str_to_int,
+    int_str_to_int,
+    int_to_int32,
+)
 from ass_tag_parser.draw_parser import parse_draw_commands
 from ass_tag_parser.errors import (
     BadAssTagArgument,
@@ -61,660 +122,656 @@ from ass_tag_parser.errors import (
 )
 from ass_tag_parser.io import MyIO
 
+def strip_whitespace(text: str) -> str:
+    """Remove whitespace from text.
 
-@dataclass
-class _ParseContext:
-    io: MyIO
-    drawing_tag: Optional[AssTagDraw] = None
+    Inpired by: https://github.com/libass/libass/blob/5f57443f1784434fe8961275da08be6d6febc688/libass/ass_utils.c#L160-L174
 
+    Parameters:
+        text (str): An string.
+    Returns:
+        A string without whitespace at the beginning and at the end.
+    """
 
-def _single_arg(ctx: _ParseContext, tag: str) -> tuple[Optional[str]]:
-    arg = ""
-    if ctx.io.peek(1) == "(":
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} doesn't take complex arguments"
-        )
-    while not ctx.io.eof and ctx.io.peek(1) not in r"\()":
-        arg += ctx.io.read(1)
-    if not arg:
-        return (None,)
-    return (arg,)
+    return text.strip(" \t")
 
 
-def _complex_args(
-    ctx: _ParseContext, tag: str, valid_counts: set[int]
-) -> tuple[tuple[str, int], ...]:
-    # pylint: disable=too-many-branches
-    if ctx.io.read(1) != "(":
-        raise BadAssTagArgument(ctx.io.global_pos, "expected brace")
+def parse_tags(text: str, pwr: float, nested: bool) -> List[AssTag]:
+    # https://github.com/libass/libass/blob/5f57443f1784434fe8961275da08be6d6febc688/libass/ass_parse.c#L242-L869
+    # https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l1383
+    tags: List[AssTag] = []
+    i = 0
 
-    brackets = 1
-    args: list[tuple[str, int]] = []
-    arg = ""
-    arg_start = ctx.io.global_pos
-    while brackets > 0:
-        char = ctx.io.read(1)
-        if char == "(":
-            brackets += 1
-            arg += char
-        elif char == ")":
-            brackets -= 1
-            if brackets > 0:
-                arg += char
-            else:
-                args.append((arg, arg_start))
+    while (j := text.find("\\", i)) >= 0:
+        # Skip the \
+        j += 1
+
+        cmd: str = ""
+        for c in text[j:]:
+            if c in ("(", "\\"):
                 break
-        elif char == ",":
-            if brackets > 1:
-                arg += char
             else:
-                args.append((arg, arg_start))
-                arg = ""
-                arg_start = ctx.io.global_pos
-        elif char in "{}":
-            raise UnexpectedCurlyBrace(ctx.io.global_pos)
-        elif ctx.io.eof:
-            raise BadAssTagArgument(ctx.io.global_pos, "unterminated brace")
-        else:
-            arg += char
+                cmd += c
+                j += 1
 
-    if len(args) not in valid_counts:
-        raise BadAssTagArgument(
-            ctx.io.global_pos,
-            f"{tag} takes {' or '.join(map(str, sorted(valid_counts)))} "
-            f"arguments (got {len(args)})",
-        )
+        cmd = strip_whitespace(cmd)
 
-    return tuple(args)
+        if len(cmd) == 0:
+            i = j
+            continue
 
+        params: List[str] = []
 
-def _bool_arg(ctx: _ParseContext, tag: str) -> tuple[Optional[bool]]:
-    (arg,) = _single_arg(ctx, tag)
-    if not arg:
-        return (None,)
-    if arg == "0":
-        return (False,)
-    if arg == "1":
-        return (True,)
-    raise BadAssTagArgument(ctx.io.global_pos, f"{tag} requires a boolean")
+        if j < len(text) and text[j] == "(":
 
+            param: str = ""
+            # Skip the (
+            j += 1
+            for c in text[j:]:
+                if c == ")":
+                    break
+                else:
+                    param += c
+                    j += 1
 
-def _int_arg(ctx: _ParseContext, tag: str) -> tuple[Optional[int]]:
-    (arg,) = _single_arg(ctx, tag)
-    if not arg:
-        return (None,)
-    try:
-        return (int(arg),)
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} requires an integer"
-        ) from exc
+            param.strip(" \t")
 
+            temp_j = j
 
-def _positive_int_arg(ctx: _ParseContext, tag: str) -> tuple[Optional[int]]:
-    (value,) = _int_arg(ctx, tag)
-    if value is not None and value < 0:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} takes only positive integers"
-        )
-    return (value,)
+            while len(param) != 0:
+                i = param.find(",")
+                j = param.find("\\")
 
+                if i >= 0 and (j < 0 or i < j):
+                    s = param[:i].strip(" \t")
+                    if len(s) != 0:
+                        params.append(s)
+                    param = param[i + 1 :] if i + 1 < len(param) else ""
+                else:
+                    param.strip(" \t")
+                    if len(param) != 0:
+                        params.append(param)
+                    param = ""
 
-def _float_arg(ctx: _ParseContext, tag: str) -> tuple[Optional[float]]:
-    (arg,) = _single_arg(ctx, tag)
-    if not arg:
-        return (None,)
-    try:
-        return (float(arg),)
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} requires a decimal"
-        ) from exc
+            j = temp_j
 
-
-def _positive_float_arg(
-    ctx: _ParseContext, tag: str
-) -> tuple[Optional[float]]:
-    (value,) = _float_arg(ctx, tag)
-    if value is not None and value < 0:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} takes only positive decimals"
-        )
-    return (value,)
-
-
-def _pos_args(ctx: _ParseContext, tag: str) -> tuple[float, float]:
-    args = _complex_args(ctx, tag, {2})
-
-    try:
-        coords = (
-            float(args[0][0]),
-            float(args[1][0]),
-        )
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} takes only decimal arguments"
-        ) from exc
-
-    return coords
-
-
-def _fade_simple_args(ctx: _ParseContext, tag: str) -> tuple[float, float]:
-    args = list(_complex_args(ctx, tag, {2}))
-
-    try:
-        times = (
-            float(args[0][0]),
-            float(args[1][0]),
-        )
-        if any(time < 0 for time in times):
-            raise BadAssTagArgument(
-                ctx.io.global_pos, f"{tag} takes only positive times"
-            )
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} requires decimal times"
-        ) from exc
-
-    return times
-
-
-def _fade_complex_args(
-    ctx: _ParseContext, tag: str
-) -> tuple[int, int, int, float, float, float, float]:
-    args = list(_complex_args(ctx, tag, {7}))
-
-    try:
-        alpha_values = (
-            int(args[0][0]),
-            int(args[1][0]),
-            int(args[2][0]),
-        )
-        if any(value < 0 for value in alpha_values):
-            raise BadAssTagArgument(
-                ctx.io.global_pos, f"{tag} takes only positive alpha values"
-            )
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} requires integer alpha values"
-        ) from exc
-
-    try:
-        times = (
-            float(args[3][0]),
-            float(args[4][0]),
-            float(args[5][0]),
-            float(args[6][0]),
-        )
-        if any(time < 0 for time in times):
-            raise BadAssTagArgument(
-                ctx.io.global_pos, f"{tag} takes only positive times"
-            )
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} requires decimal times"
-        ) from exc
-
-    return alpha_values + times
-
-
-def _bold_arg(
-    ctx: _ParseContext, tag: str
-) -> tuple[Optional[bool], Optional[float]]:
-    (weight,) = _positive_int_arg(ctx, tag)
-    return (
-        None if weight is None else weight != 0,
-        None if weight is None or weight in {0, 1} else weight,
-    )
-
-
-def _alignment_arg(ctx: _ParseContext, tag: str) -> tuple[Optional[int], bool]:
-    (value,) = _positive_int_arg(ctx, tag)
-    legacy = tag == r"\a"
-    if value is None:
-        return (None, legacy)
-    if legacy:
-        if value in (1, 2, 3):
+        if cmd.startswith(("1c", "2c", "3c", "4c")):
+            params.append(cmd[2:].strip("&H"))
+            cmd = cmd[:2]
+        elif cmd.startswith(("1a", "2a", "3a", "4a")):
+            params.append(cmd[2:].strip("&H"))
+            cmd = cmd[:2]
+        elif cmd.startswith("alpha"):
+            params.append(cmd[5:].strip("&H"))
+            cmd = cmd[:5]
+        elif cmd.startswith("an"):
+            params.append(cmd[2:])
+            cmd = cmd[:2]
+        elif cmd.startswith("a"):
+            params.append(cmd[1:])
+            cmd = cmd[:1]
+        elif cmd.startswith("blur"):
+            params.append(cmd[4:])
+            cmd = cmd[:4]
+        elif cmd.startswith("bord"):
+            params.append(cmd[4:])
+            cmd = cmd[:4]
+        elif cmd.startswith("be"):
+            params.append(cmd[2:])
+            cmd = cmd[:2]
+        elif cmd.startswith("b"):
+            params.append(cmd[1:])
+            cmd = cmd[:1]
+        elif cmd.startswith("clip"):
             pass
-        elif value in (5, 6, 7):
-            value -= 1
-        elif value in (9, 10, 11):
-            value -= 2
-        else:
-            raise BadAssTagArgument(
-                ctx.io.global_pos, f"{tag} expects 1-3, 5-7 or 9-11"
-            )
-    elif value not in range(1, 10):
-        raise BadAssTagArgument(ctx.io.global_pos, f"{tag} expects 1-9")
-    return (value, legacy)
+        elif cmd.startswith("c"):
+            params.append(cmd[1:].strip("&H"))
+            cmd = cmd[:1]
+        elif cmd.startswith("fade"):
+            pass
+        elif cmd.startswith("fe"):
+            params.append(cmd[2:])
+            cmd = cmd[:2]
+        elif cmd.startswith("fn"):
+            params.append(cmd[2:])
+            cmd = cmd[:2]
+        elif cmd.startswith(("frx", "fry", "frz")):
+            params.append(cmd[3:])
+            cmd = cmd[:3]
+        elif cmd.startswith(("fax", "fay")):
+            params.append(cmd[3:])
+            cmd = cmd[:3]
+        elif cmd.startswith("fr"):
+            params.append(cmd[2:])
+            cmd = cmd[:2]
+        elif cmd.startswith(("fscx", "fscy")):
+            params.append(cmd[4:])
+            cmd = cmd[:4]
+        elif cmd.startswith("fsc"):
+            params.append(cmd[3:])
+            cmd = cmd[:3]
+        elif cmd.startswith("fsp"):
+            params.append(cmd[3:])
+            cmd = cmd[:3]
+        elif cmd.startswith("fs"):
+            params.append(cmd[2:])
+            cmd = cmd[:2]
+        elif cmd.startswith("iclip"):
+            pass
+        elif cmd.startswith("i"):
+            params.append(cmd[1:])
+            cmd = cmd[:1]
+        elif cmd.startswith(("kt", "kf", "ko")):
+            params.append(cmd[2:])
+            cmd = cmd[:2]
+        elif cmd.startswith(("k", "K")):
+            params.append(cmd[1:])
+            cmd = cmd[:1]
+        elif cmd.startswith("move"):
+            pass
+        elif cmd.startswith("org"):
+            pass
+        elif cmd.startswith("pbo"):
+            params.append(cmd[3:])
+            cmd = cmd[:3]
+        elif cmd.startswith("pos"):
+            pass
+        elif cmd.startswith("p"):
+            params.append(cmd[1:])
+            cmd = cmd[:1]
+        elif cmd.startswith("q"):
+            params.append(cmd[1:])
+            cmd = cmd[:1]
+        elif cmd.startswith("r"):
+            params.append(cmd[1:])
+            cmd = cmd[:1]
+        elif cmd.startswith("shad"):
+            params.append(cmd[4:])
+            cmd = cmd[:4]
+        elif cmd.startswith("s"):
+            params.append(cmd[1:])
+            cmd = cmd[:1]
+        elif cmd.startswith("t"):
+            pass
+        elif cmd.startswith("u"):
+            params.append(cmd[1:])
+            cmd = cmd[:1]
+        elif cmd.startswith(("xbord", "xshad", "ybord", "yshad")):
+            params.append(cmd[5:])
+            cmd = cmd[:5]
+
+        p = params[0] if len(params) > 0 else ""
+
+        if cmd in ("1c", "2c", "3c", "4c"):
+            i = ord(cmd[0]) - ord("0")
+
+            if len(p) == 0:
+                if i == 1:
+                    tags.append(AssInvalidTagPrimaryColor())
+                elif i == 2:
+                    tags.append(AssInvalidTagSecondaryColor())
+                elif i == 3:
+                    tags.append(AssInvalidTagOutlineColor())
+                elif i == 4:
+                    tags.append(AssInvalidTagBackgroundColor())
 
-
-def _color_arg(
-    ctx: _ParseContext, tag: str
-) -> tuple[Optional[int], Optional[int], Optional[int], int, bool]:
-    start = ctx.io.global_pos
-    (arg,) = _single_arg(ctx, tag)
-    io = MyIO(arg or "", start, ctx.io.global_text)
-
-    short = tag == r"\c"
-    target = {r"\1c": 1, r"\2c": 2, r"\3c": 3, r"\4c": 4, r"\c": 1}[tag]
-    if io.eof:
-        return (None, None, None, target, short)
-
-    if io.read(1) != "&":
-        raise BadAssTagArgument(io.global_pos, "expected ampersand")
-    if io.read(1) != "H":
-        raise BadAssTagArgument(io.global_pos, "expected uppercase H")
-
-    rgb = [0, 0, 0]
-    for i in range(3):
-        try:
-            rgb[i] = int(io.read(2), 16)
-        except ValueError as exc:
-            raise BadAssTagArgument(
-                io.global_pos, "expected hexadecimal number"
-            ) from exc
-
-    if io.read(1) != "&":
-        raise BadAssTagArgument(io.global_pos, "expected ampersand")
-
-    if not io.eof:
-        raise BadAssTagArgument(io.global_pos, "extra data")
-
-    return (rgb[2], rgb[1], rgb[0], target, short)
-
-
-def _alpha_arg(ctx: _ParseContext, tag: str) -> tuple[Optional[int], int]:
-    start = ctx.io.global_pos
-    (arg,) = _single_arg(ctx, tag)
-    io = MyIO(arg or "", start, ctx.io.global_text)
-
-    target = {r"\1a": 1, r"\2a": 2, r"\3a": 3, r"\4a": 4, r"\alpha": 0}[tag]
-    if io.peek(1) != "&":
-        return (None, target)
-    io.skip(1)
-
-    if io.read(1) != "H":
-        raise BadAssTagArgument(io.global_pos, "expected uppercase H")
-
-    try:
-        value = int(io.read(2), 16)
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            io.global_pos, "expected hexadecimal number"
-        ) from exc
-
-    if io.read(1) != "&":
-        raise BadAssTagArgument(io.global_pos, "expected ampersand")
-
-    if not io.eof:
-        raise BadAssTagArgument(io.global_pos, "extra data")
-
-    return (value, target)
-
-
-def _karaoke_arg(ctx: _ParseContext, tag: str) -> tuple[float, int]:
-    karaoke_type = {"\\k": 1, "\\K": 2, "\\kf": 3, "\\ko": 4}[tag]
-    (value,) = _positive_float_arg(ctx, tag)
-    if value is None:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} requires an argument"
-        )
-    return (value * 10, karaoke_type)
-
-
-def _wrap_style_arg(ctx: _ParseContext, tag: str) -> Any:
-    (value,) = _positive_int_arg(ctx, tag)
-    if value not in range(4):
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} expects 0, 1, 2 or 3"
-        )
-    return (value,)
-
-
-def _move_args(
-    ctx: _ParseContext, tag: str
-) -> tuple[float, float, float, float, Optional[float], Optional[float]]:
-    args = list(_complex_args(ctx, tag, {4, 6}))
-
-    try:
-        coords = (
-            float(args[0][0]),
-            float(args[1][0]),
-            float(args[2][0]),
-            float(args[3][0]),
-        )
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} requires decimal coordinates"
-        ) from exc
-
-    speed: tuple[Optional[float], Optional[float]] = (None, None)
-    if len(args) == 6:
-        try:
-            speed = (float(args[4][0]), float(args[5][0]))
-            if any(time < 0 for time in speed):
-                raise BadAssTagArgument(
-                    ctx.io.global_pos, f"{tag} takes only positive times"
-                )
-        except ValueError as exc:
-            raise BadAssTagArgument(
-                ctx.io.global_pos, f"{tag} requires decimal times"
-            ) from exc
-
-    return coords + speed
-
-
-def _animation_args(
-    ctx: _ParseContext, tag: str
-) -> tuple[list[AssTag], Optional[float], Optional[float], Optional[float]]:
-    acceleration: Union[None, str, float]
-    time1: Union[None, str, float]
-    time2: Union[None, str, float]
-    tags: Union[None, str, list[AssTag]]
-
-    args = _complex_args(ctx, tag, {1, 2, 3, 4})
-
-    if len(args) == 1:
-        acceleration = None
-        time1 = None
-        time2 = None
-        tags, tags_start = args[0]
-    elif len(args) == 2:
-        acceleration = args[0][0]
-        time1 = None
-        time2 = None
-        tags, tags_start = args[1]
-    elif len(args) == 3:
-        acceleration = None
-        time1 = args[0][0]
-        time2 = args[1][0]
-        tags, tags_start = args[2]
-    else:
-        time1 = args[0][0]
-        time2 = args[1][0]
-        acceleration = args[2][0]
-        tags, tags_start = args[3]
-
-    try:
-        acceleration = None if acceleration is None else float(acceleration)
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} requires decimal acceleration value"
-        ) from exc
-    if acceleration is not None and acceleration < 0:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} takes only positive acceleration value"
-        )
-
-    try:
-        time1 = None if time1 is None else float(time1)
-        time2 = None if time2 is None else float(time2)
-    except ValueError as exc:
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} requires decimal times"
-        ) from exc
-    if (time1 is not None and time1 < 0) or (time2 is not None and time2 < 0):
-        raise BadAssTagArgument(
-            ctx.io.global_pos, f"{tag} takes only positive times"
-        )
-
-    old_io = ctx.io
-    ctx.io = MyIO(tags, tags_start, ctx.io.global_text)
-    tags = list(_parse_ass_tags(ctx))
-    ctx.io = old_io
-
-    return tags, time1, time2, acceleration
-
-
-_PARSING_MAP = [
-    (r"bord", AssTagBorder, _positive_float_arg),
-    (r"xbord", AssTagXBorder, _positive_float_arg),
-    (r"ybord", AssTagYBorder, _positive_float_arg),
-    (r"shad", AssTagShadow, _positive_float_arg),
-    (r"xshad", AssTagXShadow, _positive_float_arg),
-    (r"yshad", AssTagYShadow, _positive_float_arg),
-    (r"fsp", AssTagLetterSpacing, _float_arg),
-    (r"fax", AssTagXShear, _float_arg),
-    (r"fay", AssTagYShear, _float_arg),
-    (r"pos", AssTagPosition, _pos_args),
-    (r"org", AssTagRotationOrigin, _pos_args),
-    (r"move", AssTagMove, _move_args),
-    (r"fade", AssTagFadeComplex, _fade_complex_args),
-    (r"fad", AssTagFade, _fade_simple_args),
-    (r"frx", AssTagXRotation, _float_arg),
-    (r"fry", AssTagYRotation, _float_arg),
-    (
-        r"frz",
-        AssTagZRotation,
-        lambda ctx, tag: tuple(list(_float_arg(ctx, tag)) + [False]),
-    ),
-    (
-        r"fr",
-        AssTagZRotation,
-        lambda ctx, tag: tuple(list(_float_arg(ctx, tag)) + [True]),
-    ),
-    (r"fn", AssTagFontName, _single_arg),
-    (r"fscx", AssTagFontXScale, _positive_float_arg),
-    (r"fscy", AssTagFontYScale, _positive_float_arg),
-    (r"fs", AssTagFontSize, _positive_float_arg),
-    (r"fe", AssTagFontEncoding, _positive_int_arg),
-    (r"blur", AssTagBlurEdgesGauss, _positive_float_arg),
-    (r"be", AssTagBlurEdges, _positive_float_arg),
-    (r"i", AssTagItalic, _bool_arg),
-    (r"u", AssTagUnderline, _bool_arg),
-    (r"s", AssTagStrikeout, _bool_arg),
-    (r"b", AssTagBold, _bold_arg),
-    (r"kf", AssTagKaraoke, _karaoke_arg),
-    (r"ko", AssTagKaraoke, _karaoke_arg),
-    (r"k", AssTagKaraoke, _karaoke_arg),
-    (r"K", AssTagKaraoke, _karaoke_arg),
-    (r"q", AssTagWrapStyle, _wrap_style_arg),
-    (r"r", AssTagResetStyle, _single_arg),
-    (r"alpha", AssTagAlpha, _alpha_arg),
-    (r"1a", AssTagAlpha, _alpha_arg),
-    (r"2a", AssTagAlpha, _alpha_arg),
-    (r"3a", AssTagAlpha, _alpha_arg),
-    (r"4a", AssTagAlpha, _alpha_arg),
-    (r"1c", AssTagColor, _color_arg),
-    (r"2c", AssTagColor, _color_arg),
-    (r"3c", AssTagColor, _color_arg),
-    (r"4c", AssTagColor, _color_arg),
-    (r"c", AssTagColor, _color_arg),
-    (r"an", AssTagAlignment, _alignment_arg),
-    (r"a", AssTagAlignment, _alignment_arg),
-    (r"pbo", AssTagBaselineOffset, _float_arg),
-    (r"p", AssTagDraw, _positive_int_arg),
-    (r"t", AssTagAnimation, _animation_args),
-]
-
-
-def getNextTagPos(initialPosition: int, ctx: _ParseContext) -> int:
-    foundNextTag = False
-
-    # Reset the position. It is not always necessary
-    ctx.io._io.seek(initialPosition)
-
-    # If the first caracter is \\, we skip it
-    if ctx.io.peek(1) == "\\":
-        ctx.io.skip(1)
-
-    while not foundNextTag and not ctx.io.eof:
-        if ctx.io.peek(1) == "\\":
-            foundNextTag = True
-        else:
-            ctx.io.skip(1)
-
-    return ctx.io.global_pos
-
-def _parse_ass_tag(ctx: _ParseContext) -> AssTag:
-    i = ctx.io.global_pos
-    i_pos = ctx.io.pos
-
-    if ctx.io.peek(1) == "\\":
-        ctx.io.skip(1)
-
-        while not ctx.io.eof and ctx.io.peek(1).isspace():
-            ctx.io.skip(1)
-
-
-        for prefix in [r"clip", r"iclip"]:
-            if ctx.io.peek(len(prefix)) != prefix:
-                continue
-            ctx.io.skip(len(prefix))
-            inverse = prefix == r"iclip"
-            args = _complex_args(ctx, prefix, {1, 2, 4})
-
-            scale: Optional[int]
-            if len(args) == 1:
-                scale = None
-                path = args[0][0]
-                return AssTagClipVector(
-                    scale=scale, path=parse_draw_commands(path), inverse=inverse
-                )
-
-            if len(args) == 2:
-                scale_str = args[0][0]
-                path = args[1][0]
-                try:
-                    scale = int(scale_str)
-                except ValueError as exc:
-                    raise BadAssTagArgument(
-                        ctx.io.global_pos, f"{prefix} scale must be integer"
-                    ) from exc
-                if scale < 0:
-                    raise BadAssTagArgument(
-                        ctx.io.global_pos,
-                        f"{prefix} scale must be positive integer",
-                    )
-                return AssTagClipVector(
-                    scale=scale, path=parse_draw_commands(path), inverse=inverse
-                )
-
-            if len(args) == 4:
-                try:
-                    corners = [float(arg[0]) for arg in args]
-                except ValueError as exc:
-                    raise BadAssTagArgument(
-                        ctx.io.global_pos,
-                        f"{prefix} takes only decimal coordinates",
-                    ) from exc
-                return AssTagClipRectangle(
-                    corners[0], corners[1], corners[2], corners[3], inverse=inverse
-                )
-
-            assert False
-
-        for prefix, cls, arg_func in _PARSING_MAP:
-            if ctx.io.peek(len(prefix)) == prefix:
-                ctx.io.skip(len(prefix))
-                try:
-                    args = arg_func(ctx, prefix)
-                    ret: AssTag = cls(*args)
-                    ret.meta = Meta(
-                        i, ctx.io.global_pos, ctx.io.global_text[i : ctx.io.global_pos]
-                    )
-
-                    if (
-                        isinstance(ret, AssTagDraw)
-                        and ret.scale is not None
-                        and ret.scale > 0
-                    ):
-                        ctx.drawing_tag = ret
-                except BadAssTagArgument:
-
-                    j = getNextTagPos(i_pos, ctx)
-                    ret = AssTagComment(ctx.io.global_text[i:j])
-                    ret.meta = Meta(i, j, ret.text)
-                return ret
-
-    j = getNextTagPos(i_pos, ctx)
-    ret = AssTagComment(ctx.io.global_text[i:j])
-    ret.meta = Meta(i, j, ret.text)
-    return ret
-
-
-def _merge_comments(tags: list[AssTag]) -> list[AssTag]:
-    if not tags:
-        return []
-
-    ret = [tags.pop(0)]
-    while tags:
-        cur = tags.pop(0)
-
-        if isinstance(ret[-1], AssTagComment) and isinstance(
-            cur, AssTagComment
-        ):
-            prev = ret.pop()
-            assert cur.meta
-            assert prev.meta
-            assert isinstance(prev, AssTagComment)
-            block = AssTagComment(prev.text + cur.text)
-            block.meta = Meta(prev.meta.start, cur.meta.end, block.text)
-            ret.append(block)
-        else:
-            ret.append(cur)
-
-    return ret
-
-
-def _parse_ass_tags(ctx: _ParseContext) -> Iterable[AssTag]:
-    while not ctx.io.eof:
-
-        yield _parse_ass_tag(ctx)
-
-
-def _parse_ass(ctx: _ParseContext) -> Iterable[AssItem]:
-    while not ctx.io.eof:
-        i = ctx.io.pos
-        if ctx.io.peek(1) == "{":
-
-            ctx.io.skip(1)
-            while True:
-                if ctx.io.eof:
-                    raise UnterminatedCurlyBrace(ctx.io.global_pos)
-                if ctx.io.peek(1) == "{":
-                    raise UnexpectedCurlyBrace(ctx.io.global_pos)
-                if ctx.io.peek(1) == "}":
-                    ctx.io.skip(1)
-                    break
-                ctx.io.skip(1)
-            j = ctx.io.pos
-
-            tag_list_opening = AssTagListOpening()
-            tag_list_opening.meta = Meta(i, i + 1, "{")
-            yield tag_list_opening
-
-            old_io = ctx.io
-            ctx.io = ctx.io.divide(i + 1, j - 1)
-            yield from _merge_comments(list(_parse_ass_tags(ctx)))
-            ctx.io = old_io
-
-            tag_list_ending = AssTagListEnding()
-            tag_list_ending.meta = Meta(j - 1, j, "}")
-            yield tag_list_ending
-
-        else:
-            while not ctx.io.eof:
-                if ctx.io.peek(1) == "{":
-                    break
-                if ctx.io.peek(1) == "}":
-                    raise UnexpectedCurlyBrace(ctx.io.global_pos)
-                ctx.io.skip(1)
-            j = ctx.io.pos
-            text = ctx.io.text[i:j]
-            if ctx.drawing_tag is not None:
-                ctx.drawing_tag.path = parse_draw_commands(text)
-                ctx.drawing_tag = None
             else:
-                ass_text = AssText(text)
-                ass_text.meta = Meta(i, j, ctx.io.text[i:j])
-                yield ass_text
+                red, green, blue = color_arg(int_to_int32(hex_str_to_int(p)))
+
+                if i == 1:
+                    tags.append(AssTagPrimaryColor(red, green, blue))
+                elif i == 2:
+                    tags.append(AssTagSecondaryColor(red, green, blue))
+                elif i == 3:
+                    tags.append(AssTagOutlineColor(red, green, blue))
+                elif i == 4:
+                    tags.append(AssTagBackgroundColor(red, green, blue))
+
+        elif cmd in ("1a", "2a", "3a", "4a"):
+            i = ord(cmd[0]) - ord("0")
+
+            if len(p) == 0:
+                if i == 1:
+                    tags.append(AssInvalidTagPrimaryAlpha())
+                elif i == 2:
+                    tags.append(AssInvalidTagSecondaryAlpha())
+                elif i == 3:
+                    tags.append(AssInvalidTagOutlineAlpha())
+                elif i == 4:
+                    tags.append(AssInvalidTagBackgroundAlpha())
+            else:
+
+                alpha_arg = int_to_int32(hex_str_to_int(p))
+
+                if i == 1:
+                    tags.append(AssTagPrimaryAlpha(alpha_arg))
+                elif i == 2:
+                    tags.append(AssTagSecondaryAlpha(alpha_arg))
+                elif i == 3:
+                    tags.append(AssTagOutlineAlpha(alpha_arg))
+                elif i == 4:
+                    tags.append(AssTagBackgroundAlpha(alpha_arg))
+
+        elif cmd == "alpha":
+            if len(p) == 0:
+                tags.append(AssInvalidTagAlpha())
+            else:
+                tags.append(AssTagAlpha(int_to_int32(hex_str_to_int(p))))
+        elif cmd == "an":
+            n = int_str_to_int(p)
+
+            try:
+                tag = AssTagAlignment(n)
+
+                if any(isinstance(x, AssTagAlignment) for x in tags):
+                    tags.append(AssInvalidTagAlignment())
+                else:
+                    tags.append(tag)
+            except:
+                tags.append(AssInvalidTagAlignment())
+
+        elif cmd == "a":
+            n = int_str_to_int(p)
+
+            try:
+                tag = AssTagAlignment(n, True)
+
+                if any(isinstance(x, AssTagAlignment) for x in tags):
+                    tags.append(AssInvalidTagAlignment(True))
+                else:
+                    tags.append(tag)
+            except:
+                tags.append(AssInvalidTagAlignment(True))
+        elif cmd == "blur":
+            if len(p) == 0:
+                tags.append(AssInvalidTagBlurEdgesGauss())
+            else:
+                tags.append(AssTagBlurEdgesGauss(float_str_to_float(p)))
+
+        elif cmd == "bord":
+            if len(p) == 0:
+                tags.append(AssInvalidTagBorder())
+            else:
+                tags.append(AssTagBorder(float_str_to_float(p)))
+
+        elif cmd == "be":
+            if len(p) == 0:
+                tags.append(AssInvalidTagBlurEdges())
+            else:
+                tags.append(AssTagBlurEdges(float_str_to_float(p)))
+
+        elif cmd == "b":
+            if len(p) == 0:
+                tags.append(AssInvalidTagBold())
+            else:
+                try:
+                    weight = int_str_to_int(p)
+                    tags.append(AssTagBold(weight))
+                except:
+                    tags.append(AssInvalidTagBold())
+
+        elif cmd.startswith("clip") or cmd.startswith("iclip"):
+
+            inverse = cmd == "iclip"
+
+            if len(params) == 1:
+                # https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l522
+                raise Exception("Not implemented")
+            elif len(params) == 2:
+                raise Exception("Not implemented")
+            elif len(params) == 4:
+                x0 = int_str_to_int(params[0])
+                y0 = int_str_to_int(params[1])
+                x1 = int_str_to_int(params[2])
+                y1 = int_str_to_int(params[3])
+
+                tags.append(AssTagClipRectangle(x0, y0, x1, y1, inverse))
+        elif cmd == "c":
+            if len(p) == 0:
+                tags.append(AssInvalidTagPrimaryColor(True))
+            else:
+                red, green, blue = color_arg(int_to_int32(hex_str_to_int(p)))
+                tags.append(AssTagPrimaryColor(red, green, blue, True))
+
+        elif cmd in ("fade", "fad"):
+            # // {\fade(a1=param[0], a2=param[1], a3=param[2], t1=t[0], t2=t[1], t3=t[2], t4=t[3])
+            if len(params) == 7:
+                a1 = int_str_to_int(params[0])
+                a2 = int_str_to_int(params[1])
+                a3 = int_str_to_int(params[2])
+                t1 = int_str_to_int(params[3])
+                t2 = int_str_to_int(params[4])
+                t3 = int_str_to_int(params[5])
+                t4 = int_str_to_int(params[6])
+                tags.append(AssTagFadeComplex(a1, a2, a3, t1, t2, t3, t4))
+            elif len(params) == 2:
+                t1 = int_str_to_int(params[0])
+                t2 = int_str_to_int(params[1])
+                tags.append(AssTagFade(t1, t2))
+        elif cmd == "fax":
+            if len(p) == 0:
+                tags.append(AssInvalidTagXShear())
+            else:
+                tags.append(AssTagXShear(float_str_to_float(p)))
+        elif cmd == "fay":
+            if len(p) == 0:
+                tags.append(AssInvalidTagYShear())
+            else:
+                tags.append(AssTagYShear(float_str_to_float(p)))
+        elif cmd == "fe":
+            if len(p) == 0:
+                tags.append(AssInvalidTagFontEncoding())
+            else:
+                tags.append(AssTagFontEncoding(int_str_to_int(p)))
+
+        elif cmd == "fn":
+            # https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l1683
+            if len(p) == 0 and p == "0":
+                tags.append(AssInvalidTagFontEncoding())
+            else:
+                tags.append(AssTagFontName(p))
+
+        elif cmd == "frx":
+            if len(p) == 0:
+                tags.append(AssInvalidTagXRotation())
+            else:
+                tags.append(AssTagXRotation(float_str_to_float(p)))
+        elif cmd == "fry":
+            if len(p) == 0:
+                tags.append(AssInvalidTagYRotation())
+            else:
+                tags.append(AssTagYRotation(float_str_to_float(p)))
+        elif cmd == "frz":
+            if len(p) == 0:
+                tags.append(AssInvalidTagZRotation())
+            else:
+                tags.append(AssTagZRotation(float_str_to_float(p)))
+        elif cmd == "fr":
+            if len(p) == 0:
+                tags.append(AssInvalidTagZRotation(True))
+            else:
+                tags.append(AssTagZRotation(float_str_to_float(p), True))
+
+        elif cmd == "fscx":
+            if len(p) == 0:
+                tags.append(AssInvalidTagFontXScale())
+            else:
+                tags.append(AssTagFontXScale(float_str_to_float(p)))
+
+        elif cmd == "fscy":
+            if len(p) == 0:
+                tags.append(AssInvalidTagFontYScale())
+            else:
+                tags.append(AssTagFontYScale(float_str_to_float(p)))
+        elif cmd == "fsc":
+
+            tags.append(AssTagFontScale(float_str_to_float(p)))
+        elif cmd == "fsp":
+            if len(p) == 0:
+                tags.append(AssInvalidTagLetterSpacing())
+            else:
+                tags.append(AssTagLetterSpacing(float_str_to_float(p)))
+        elif cmd == "fs":
+            # Libass has some difference if p start with "+" or "-", but we can't mimic it
+            # https://github.com/libass/libass/blob/5f57443f1784434fe8961275da08be6d6febc688/libass/ass_parse.c#L425-L428
+            if len(p) == 0:
+                tags.append(AssInvalidTagFontSize())
+            else:
+                tags.append(AssTagFontSize(float_str_to_float(p)))
+        elif cmd == "i":
+            n = int_str_to_int(p)
+
+            if len(p) == 0 or n not in (0, 1):
+                tags.append(AssInvalidTagItalic())
+            else:
+                tags.append(AssTagItalic(bool(n)))
+
+        elif cmd in ("kt", "K"):
+            short_tag = cmd == "K"
+            n = int_str_to_int(p)
+
+            if len(p) == 0:
+                n = 100
+
+            tags.append(AssTagKaraokeFill(n * 10, short_tag))
+
+        elif cmd == "ko":
+            n = int_str_to_int(p)
+            if len(p) == 0:
+                n = 100
+            tags.append(AssTagKaraokeOutline(n * 10))
+
+        elif cmd == "k":
+
+            n = int_str_to_int(p)
+            if len(p) == 0:
+                n = 100
+            tags.append(AssTagKaraoke(n * 10))
+
+        elif cmd == "move":
+            if len(params) in (4, 6) and not any(
+                isinstance(tag, AssTagMove) for tag in tags
+            ):
+                x1 = float_str_to_float(params[0])
+                y1 = float_str_to_float(params[1])
+                x2 = float_str_to_float(params[2])
+                y2 = float_str_to_float(params[3])
+                t1 = t2 = None
+                if len(params) == 6:
+                    t1 = float_str_to_float(params[4])
+                    t2 = float_str_to_float(params[5])
+                tags.append(AssTagMove(x1, y1, x2, y2, t1, t2))
+
+        elif cmd == "org":
+            if len(params) == 2 and not any(
+                isinstance(tag, AssTagRotationOrigin) for tag in tags
+            ):
+                x = float_str_to_float(params[0])
+                y = float_str_to_float(params[1])
+
+                tags.append(AssTagRotationOrigin(x, y))
+
+        elif cmd == "pbo":
+            if len(p) == 0:
+                tags.append(AssInvalidTagBaselineOffset())
+            else:
+                tags.append(AssTagBaselineOffset(float_str_to_float(p)))
+        elif cmd == "pos":
+            if len(params) == 2 and not any(
+                isinstance(tag, AssTagPosition) for tag in tags
+            ):
+                x = float_str_to_float(params[0])
+                y = float_str_to_float(params[1])
+
+                tags.append(AssTagPosition(x, y))
+
+        elif cmd == "p":
+            tags.append(AssTagDraw(int_str_to_int(p)))
+
+        elif cmd == "q":
+            try:
+                wrap_style = WrapStyle(int_str_to_int(p))
+            except:
+                wrap_style = WrapStyle(0)
+
+            tags.append(AssTagWrapStyle(wrap_style))
+
+        elif cmd == "r":
+            tags.append(AssTagResetStyle(None if len(p) == 0 else p))
+        elif cmd == "shad":
+
+            if len(p) == 0:
+                tags.append(AssInvalidTagShadow())
+            else:
+                tags.append(AssTagShadow(float_str_to_float(p)))
+
+        elif cmd == "s":
+            n = int_str_to_int(p)
+
+            if len(p) == 0 or n not in (0, 1):
+                tags.append(AssInvalidTagStrikeout())
+            else:
+                tags.append(AssTagStrikeout(bool(n)))
+
+        elif cmd == "t":
+            p = ""
+
+            m_animStart = m_animEnd = None
+            m_animAccel = None
+
+            if len(params) == 1:
+                p = params[0]
+            elif len(params) == 2:
+                m_animAccel = float_str_to_float(params[0])
+                p = params[1]
+            elif len(params) == 3:
+                m_animStart = int_str_to_int(params[0])
+                m_animEnd = int_str_to_int(params[0])
+                p = params[2]
+            elif len(params) == 4:
+                m_animStart = int_str_to_int(params[0])
+                m_animEnd = int_str_to_int(params[0])
+                m_animAccel = float_str_to_float(params[0])
+                p = params[3]
+
+            tags = parse_tags(p, pwr, nested)
+
+            tags.append(
+                AssTagAnimation(tags, m_animStart, m_animEnd, m_animAccel)
+            )
+        elif cmd == "u":
+            n = int_str_to_int(p)
+
+            if len(p) == 0 or n not in (0, 1):
+                tags.append(AssInvalidTagUnderline())
+            else:
+                tags.append(AssTagUnderline(bool(n)))
+        elif cmd == "xbord":
+            if len(p) == 0:
+                tags.append(AssInvalidTagXBorder())
+            else:
+                tags.append(AssTagXBorder(float_str_to_float(p)))
+        elif cmd == "xshad":
+            if len(p) == 0:
+                tags.append(AssInvalidTagXShadow())
+            else:
+                tags.append(AssTagXShadow(float_str_to_float(p)))
+
+        elif cmd == "ybord":
+            if len(p) == 0:
+                tags.append(AssInvalidTagYBorder())
+            else:
+                tags.append(AssTagYBorder(float_str_to_float(p)))
+        elif cmd == "yshad":
+            if len(p) == 0:
+                tags.append(AssInvalidTagYShadow())
+            else:
+                tags.append(AssTagYShadow(float_str_to_float(p)))
+
+        i = j
+    return tags
 
 
 def parse_ass(text: str) -> list[AssItem]:
-    ctx = _ParseContext(io=MyIO(text))
-    return list(_parse_ass(ctx))
+    # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_render.c#L2044-L2064
+    ass_items = []
+
+    i = 0
+    while i < len(text):
+
+        find_left_bracket_index = text.find("{", i)
+
+        if find_left_bracket_index == -1:
+            # There is no tag to parse
+            ass_text = AssText(text[i:])
+            ass_items.append(ass_text)
+
+            i = len(text)
+
+        else:
+            # There can be a tag to parse
+            # Ex:
+            #    - This is a{n example
+            #    - This is a{\\b1}n example
+
+            find_right_bracket_index = text.find("}", find_left_bracket_index)
+
+            if find_right_bracket_index == -1:
+                # There is no tag to parse
+                # Ex: This is a{n example
+
+                ass_text = AssText(text[i:])
+                ass_items.append(ass_text)
+
+                i = len(text)
+
+            else:
+                # There is a tag to parse
+                # Ex: This is a{\\b1}n example
+
+                if i < find_left_bracket_index:
+                    # There is some text to parse before the {
+                    # Ex: This is a{\\b1}
+                    ass_text = AssText(text[i:find_left_bracket_index])
+                    ass_items.append(ass_text)
+
+                tag_list_opening = AssTagListOpening()
+                ass_items.append(tag_list_opening)
+
+                ass_items.extend(
+                    parse_tags(
+                        text[
+                            find_left_bracket_index
+                            + 1 : find_right_bracket_index
+                        ],
+                        1,
+                        False,
+                    )
+                )
+
+                tag_list_ending = AssTagListEnding()
+                ass_items.append(tag_list_ending)
+
+                i = find_right_bracket_index + 1
+
+    return ass_items
+
+
+"""def parse_ass(text: str) -> List[AssItem]:
+    # https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l2153
+    ass_items = []
+
+    ass_items.append(AssTagListOpening())
+
+    while len(text) != 0:
+        print(text)
+        if text[0] == '{' and (i := text.find("}")) > 0:
+            ass_items.append(AssTagListOpening())
+
+            ass_items.append(parse_tags(text[1:i], 1, False))
+
+            ass_items.append(AssTagListEnding())
+
+            print(i)
+            print(text[i+1:])
+            
+            text = text[i+1:]
+        else:
+            bracket_index = text.find("{")
+
+            if bracket_index == -1:
+                ass_items.append(AssText(text))
+                text = ""
+
+    ass_items.append(AssTagListEnding())
+
+
+    return ass_items
+"""
+
+
+def tags_to_line(tags: List[AssTag]):
+    return "".join(str(tag) for tag in tags)
 
 
 @cache

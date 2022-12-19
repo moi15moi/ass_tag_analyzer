@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from ass_tag_parser.common import Meta
-
 
 @dataclass
 class AssDrawPoint:
@@ -11,7 +9,7 @@ class AssDrawPoint:
 
 
 class AssDrawCmd:
-    meta: Optional[Meta] = None
+    pass
 
 
 @dataclass
