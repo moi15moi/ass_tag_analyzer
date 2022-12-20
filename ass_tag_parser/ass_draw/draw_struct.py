@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Tuple
 
 
 @dataclass
@@ -20,22 +20,22 @@ class AssDrawCmdMove(AssDrawCmd):
 
 @dataclass
 class AssDrawCmdLine(AssDrawCmd):
-    points: list[AssDrawPoint]
+    points: List[AssDrawPoint]
 
 
 @dataclass
 class AssDrawCmdBezier(AssDrawCmd):
-    points: tuple[AssDrawPoint, AssDrawPoint, AssDrawPoint]
+    points: Tuple[AssDrawPoint, AssDrawPoint, AssDrawPoint]
 
 
 @dataclass
 class AssDrawCmdSpline(AssDrawCmd):
-    points: list[AssDrawPoint]
+    points: List[AssDrawPoint]
 
 
 @dataclass
 class AssDrawCmdExtendSpline(AssDrawCmd):
-    points: list[AssDrawPoint]
+    points: List[AssDrawPoint]
 
 
 @dataclass

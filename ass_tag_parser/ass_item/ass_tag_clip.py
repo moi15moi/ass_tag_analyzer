@@ -1,16 +1,10 @@
+from .ass_item import AssTag
 from dataclasses import dataclass
-from ass_tag_parser.ass_item.ass_tag import AssTag
 
 @dataclass
 class AssTagClipRectangle(AssTag):
-    x1: float
-    y1: float
-    x2: float
-    y2: float
+    # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L685-L704
     inverse: bool
-
-    def __str__(self):
-        return f"\\{self.tag}({self.x1}, {self.y1}, {self.x2}, {self.y2})"
 
     @property
     def tag(self) -> str:
@@ -21,12 +15,9 @@ class AssTagClipRectangle(AssTag):
 
 @dataclass
 class AssTagClipVector(AssTag):
-    scale: Optional[int]
-    path: list[AssDrawCmd]
+    # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L685-L704
     inverse: bool
 
-    def __str__(self):
-        return f"\\{self.tag}({self.x1}, {self.y1}, {self.x2}, {self.y2})"
 
     @property
     def tag(self) -> str:

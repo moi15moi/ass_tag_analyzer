@@ -81,3 +81,16 @@ def int_to_int32(number: int) -> int:
     INT32_MAX = 0x7FFFFFFF
 
     return min(max(number, INT32_MIN), INT32_MAX)
+
+def strip_whitespace(text: str) -> str:
+    """Remove whitespace from text.
+
+    Inpired by: https://github.com/libass/libass/blob/5f57443f1784434fe8961275da08be6d6febc688/libass/ass_utils.c#L160-L174
+
+    Parameters:
+        text (str): An string.
+    Returns:
+        A string without whitespace at the beginning and at the end.
+    """
+
+    return text.strip(" \t")

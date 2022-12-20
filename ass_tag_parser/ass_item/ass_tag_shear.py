@@ -1,12 +1,9 @@
+from .ass_item import AssTag
 from dataclasses import dataclass
-from ass_tag_parser.ass_item.ass_tag import AssTag
 
 @dataclass
 class AssTagXShear(AssTag):
-    value: float
-
-    def __str__(self):
-        return f"\\{self.tag}{self.value}"
+    # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L345-L352
 
     @property
     def tag(self) -> str:
@@ -15,10 +12,7 @@ class AssTagXShear(AssTag):
 
 @dataclass
 class AssTagYShear(AssTag):
-    value: float
-
-    def __str__(self):
-        return f"\\{self.tag}{self.value}"
+    # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L353-L360
 
     @property
     def tag(self) -> str:

@@ -1,12 +1,11 @@
-from ass_tag_parser.ass_item import AssItem
+from ..ass_item import AssTag
 from dataclasses import dataclass
 
 
 @dataclass
-class AssInvalidTag(AssItem):
-    @property
-    def tag(self) -> str:
-        pass
+class AssInvalidTag(AssTag):
+    def __str__(self):
+        return f"\\{self.tag}"
 
 
 @dataclass
