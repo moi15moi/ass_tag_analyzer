@@ -40,5 +40,5 @@ from .ass_tag_shadow import AssTagShadow, AssTagXShadow, AssTagYShadow
 from .ass_tag_shear import AssTagXShear, AssTagYShear
 from .ass_tag_wrap_style import AssTagWrapStyle, WrapStyle
 
-from . import ass_valid_tag
-from . import ass_invalid_tag
+from .ass_valid_tag import *
+from .ass_invalid_tag import *
