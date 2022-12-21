@@ -7,14 +7,21 @@ class TypeParser:
     # https://www.qnx.com/developers/docs/6.4.0/dinkum_en/c99/stdint.html#INT32_MAX
     INT32_MAX = 0x7FFFFFFF
 
-    # https://en.cppreference.com/w/cpp/string/wide/wcstof
-    # https://en.cppreference.com/w/cpp/string/wide/iswspace
-    FLOAT_STR_REGEX = re.compile(r"[ \f\n\r\t\v]*[+-]?[0-9]*.?[0-9]*")
-
-    # https://en.cppreference.com/w/cpp/string/wide/wcstol
-    # https://en.cppreference.com/w/cpp/string/wide/iswspace
-    INT_STR_REGEX = re.compile(r"[ \f\n\r\t\v]*[+-]?[0-9]*")
-    HEX_STR_REGEX = re.compile(r"[ \f\n\r\t\v]*[+-]?[0-9A-Fa-f]*")
+    """
+    From python documentation
+        \s
+            For Unicode (str) patterns:
+                [...]. If the ASCII flag is used, only [ \t\n\r\f\v] is matched.
+        \d
+            For Unicode (str) patterns:
+                [...]. If the ASCII flag is used only [0-9] is matched.
+    Libass
+        Space: https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_string.h#L27-L31
+        Number: https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_string.h#L33-L36
+    """
+    FLOAT_STR_REGEX = re.compile(r"^\s*[+-]?\d*\.?\d*(?:[eE][+-]?\d+)?", flags=re.ASCII)
+    INT_STR_REGEX = re.compile(r"^\s*[+-]?\d*", flags=re.ASCII)
+    HEX_STR_REGEX = re.compile(r"^\s*[+-]?[\da-fA-F]*", flags=re.ASCII)
 
     @staticmethod
     def color_arg(color: int):
@@ -47,11 +54,11 @@ class TypeParser:
             - https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L46-L51
             - https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_utils.h#L191-L196
         """
-        float_str = TypeParser.FLOAT_STR_REGEX.match(text).group(0)
+        match = TypeParser.FLOAT_STR_REGEX.search(text)
 
         try:
-            return float(float_str)
-        except:
+            return float(match.group(0))
+        except (AttributeError, ValueError):
             return 0
 
     @staticmethod
@@ -68,11 +75,11 @@ class TypeParser:
             - https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L39-L44
             - https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_utils.h#L198-L204
         """
-        int_str = TypeParser.INT_STR_REGEX.match(text).group(0)
+        match = TypeParser.INT_STR_REGEX.search(text)
 
         try:
-            return TypeParser.int_to_int32(int(int_str))
-        except:
+            return TypeParser.int_to_int32(int(match.group(0)))
+        except (AttributeError, ValueError):
             return 0
 
     @staticmethod
@@ -89,11 +96,11 @@ class TypeParser:
             - https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L39-L44
             - https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_utils.h#L198-L204
         """
-        hex_str = TypeParser.HEX_STR_REGEX.match(text).group(0)
+        match = TypeParser.HEX_STR_REGEX.search(text)
 
         try:
-            return TypeParser.int_to_int32(int(hex_str, 16))
-        except:
+            return TypeParser.int_to_int32(int(match.group(0), 16))
+        except (AttributeError, ValueError):
             return 0
 
     @staticmethod
