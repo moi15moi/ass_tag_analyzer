@@ -1,7 +1,12 @@
 from .ass_invalid_tag import AssInvalidTag
-from ..ass_tag_alpha import (AssTagAlpha, AssTagPrimaryAlpha, AssTagSecondaryAlpha, AssTagOutlineAlpha, AssTagBackgroundAlpha)
+from ..ass_tag_alpha import (
+    AssTagAlpha,
+    AssTagPrimaryAlpha,
+    AssTagSecondaryAlpha,
+    AssTagOutlineAlpha,
+    AssTagBackgroundAlpha,
+)
 from dataclasses import dataclass
-
 
 
 @dataclass
@@ -10,19 +15,20 @@ class AssInvalidTagAlpha(AssTagAlpha, AssInvalidTag):
 
 
 @dataclass
-class AssInvalidPrimaryAlpha(AssTagPrimaryAlpha, AssInvalidTag):
+class AssInvalidTagPrimaryAlpha(AssTagPrimaryAlpha, AssInvalidTag):
     pass
 
 
 @dataclass
-class AssInvalidSecondaryAlpha(AssTagSecondaryAlpha, AssInvalidTag):
+class AssInvalidTagSecondaryAlpha(AssTagSecondaryAlpha, AssInvalidTag):
     pass
 
 
 @dataclass
-class AssInvalidOutlineAlpha(AssTagOutlineAlpha, AssInvalidTag):
+class AssInvalidTagOutlineAlpha(AssTagOutlineAlpha, AssInvalidTag):
     pass
 
+
 @dataclass
-class AssInvalidBackgroundAlpha(AssTagBackgroundAlpha, AssInvalidTag):
+class AssInvalidTagBackgroundAlpha(AssTagBackgroundAlpha, AssInvalidTag):
     pass
