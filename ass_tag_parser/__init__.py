@@ -8,5 +8,7 @@
 # from .draw_parser import parse_draw_commands
 # from .draw_struct import *
 
-from . import ass_item
+from .ass_item import *
+from .ass_parser import parse_ass, parse_tags
+
 __version__ = "0.0.1"
