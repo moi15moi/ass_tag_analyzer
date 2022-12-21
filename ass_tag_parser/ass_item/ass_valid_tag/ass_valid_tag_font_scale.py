@@ -11,7 +11,18 @@ class AssValidTagFontScale(AssTagFontScale):
 
 @dataclass
 class AssValidTagFontXScale(AssTagFontXScale):
-    scale: float
+    __scale: float
+
+    def __init__(self, scale: float):
+        self.scale = scale
+
+    @property
+    def scale(self):
+        return self.__scale
+
+    @scale.setter
+    def scale(self, value: float):
+        self.__scale = 0 if value < 0 else value
 
     def __str__(self):
         return f"\\{self.tag}{Format.format_float(self.scale)}"
@@ -19,7 +30,18 @@ class AssValidTagFontXScale(AssTagFontXScale):
 
 @dataclass
 class AssValidTagFontYScale(AssTagFontYScale):
-    scale: float
+    __scale: float
+
+    def __init__(self, scale: float):
+        self.scale = scale
+
+    @property
+    def scale(self):
+        return self.__scale
+
+    @scale.setter
+    def scale(self, value: float):
+        self.__scale = 0 if value < 0 else value
 
     def __str__(self):
         return f"\\{self.tag}{Format.format_float(self.scale)}"
