@@ -5,10 +5,10 @@ from dataclasses import dataclass
 
 @dataclass
 class AssValidTagBlurEdges(AssTagBlurEdges):
-    weight: int
+    weight: float
 
     def __str__(self):
-        return f"\\{self.tag}{self.weight}"
+        return f"\\{self.tag}{Format.format_float(self.weight)}"
 
 
 @dataclass
