@@ -7,6 +7,7 @@ class AssItem(ABC):
     def __str__(self):
         return "{"
 
+
 @dataclass
 class AssTagListOpening(AssItem):
     def __str__(self):
@@ -33,6 +34,7 @@ class AssComment(AssItem):
 
     def __str__(self):
         return self.text
+
 
 class AssTag(AssItem):
     @property

@@ -2,8 +2,6 @@ from .ass_item import AssTag
 from dataclasses import dataclass
 
 
-
-
 @dataclass
 class AssTagBold(AssTag):
     # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L781-L786
@@ -40,11 +38,9 @@ class AssTagStrikeout(AssTag):
         return "s"
 
 
-
 @dataclass
 class AssTagFontName:
     # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L512-L522
-
 
     @property
     def tag(self) -> str:
@@ -69,7 +65,6 @@ class AssTagFontSize(AssTag):
         return "fs"
 
 
-
 @dataclass
 class AssTagLetterSpacing(AssTag):
     # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L413-L420
@@ -79,22 +74,6 @@ class AssTagLetterSpacing(AssTag):
         return "fsp"
 
 
-
-
-@dataclass
-class AssTagAlignment(AssTag):
-    # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L540-L561
-    is_legacy_tag: bool
-
-    @property
-    def tag(self) -> str:
-        return "an"
-
-    @property
-    def legacy_tag(self) -> str:
-        return "a"
-
-
 @dataclass
 class AssTagResetStyle(AssTag):
     # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L761-L767
@@ -102,9 +81,6 @@ class AssTagResetStyle(AssTag):
     @property
     def tag(self) -> str:
         return "r"
-
-
-
 
 
 @dataclass
@@ -118,7 +94,6 @@ class AssTagAnimation(AssTag):
 @dataclass
 class AssTagBaselineOffset(AssTag):
     # https://github.com/libass/libass/blob/5f57443f1784434fe8961275da08be6d6febc688/libass/ass_parse.c#L846-L848
-
 
     @property
     def tag(self) -> str:
@@ -141,4 +116,3 @@ class AssTagDraw(AssTag):
     @property
     def tag(self) -> str:
         return "p"
-

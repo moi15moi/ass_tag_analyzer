@@ -1,8 +1,9 @@
 from .ass_item import AssTag
 from dataclasses import dataclass
-from enum import Enum
+from enum import IntEnum
 
-class WrapStyle(Enum):
+
+class WrapStyle(IntEnum):
     # https://aeg-dev.github.io/AegiSite/docs/3.2/ass_tags/#:~:text=Wrap%20style
 
     SMART_TOP = 0
