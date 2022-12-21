@@ -38,6 +38,9 @@ class AssValidTagBold(AssTagBold):
         weight = 400 if weight == 0 else weight
         weight = 700 if weight == 1 else weight
 
+        if weight < 100:
+            raise ValueError("Bold tag cannot be under 100 except 0 and 1")
+
         self.__weight = weight
 
     def __str__(self):
