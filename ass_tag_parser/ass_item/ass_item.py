@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class AssItem(ABC):
     @abstractmethod
     def __str__(self):
-        return "{"
+        pass
 
 
 @dataclass
@@ -40,8 +40,4 @@ class AssTag(AssItem):
     @property
     @abstractmethod
     def tag(self) -> str:
-        pass
-
-    @abstractmethod
-    def __str__(self):
         pass
