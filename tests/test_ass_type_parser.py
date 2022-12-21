@@ -35,6 +35,7 @@ def test_float_str_to_float():
     assert TypeParser.float_str_to_float("2e2") == 2 * pow(10, 2)
     assert TypeParser.float_str_to_float("2e") == 2
     assert TypeParser.float_str_to_float("2.e10") == 2 * pow(10, 10)
+    assert TypeParser.float_str_to_float("e10") == 0
 
 
 def test_int_str_to_int():
