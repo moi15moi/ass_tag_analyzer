@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 @dataclass
 class AssValidTagKaraoke(AssTagKaraoke):
-    duration: int  # In ms
+    duration: float  # In ms
 
     def __str__(self):
         return f"\\{self.tag}{self.duration // 10}"
@@ -12,7 +12,7 @@ class AssValidTagKaraoke(AssTagKaraoke):
 
 @dataclass
 class AssValidTagKaraokeFill(AssTagKaraokeFill):
-    duration: int  # In ms
+    duration: float  # In ms
 
     def __str__(self):
         if self.is_short_tag:
@@ -22,7 +22,7 @@ class AssValidTagKaraokeFill(AssTagKaraokeFill):
 
 @dataclass
 class AssValidTagKaraokeOutline(AssTagKaraokeOutline):
-    duration: int  # In ms
+    duration: float  # In ms
 
     def __str__(self):
         return f"\\{self.tag}{self.duration // 10}"
