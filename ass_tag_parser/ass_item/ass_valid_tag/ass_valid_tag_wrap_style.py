@@ -1,4 +1,4 @@
-from ..ass_tag_wrap_style import (AssTagWrapStyle, WrapStyle)
+from ..ass_tag_wrap_style import AssTagWrapStyle, WrapStyle
 from dataclasses import dataclass
 
 

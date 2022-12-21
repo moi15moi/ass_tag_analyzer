@@ -1,6 +1,6 @@
-from ..ass_tag_shadow import (AssTagShadow, AssTagXShadow, AssTagYShadow)
+from ass_tag_parser.ass_format import Format
+from ..ass_tag_shadow import AssTagShadow, AssTagXShadow, AssTagYShadow
 from dataclasses import dataclass
-
 
 
 @dataclass
@@ -19,7 +19,7 @@ class AssValidTagShadow(AssTagShadow):
         self.__size = 0 if value < 0 else value
 
     def __str__(self):
-        return f"\\{self.tag}{self.size}"
+        return f"\\{self.tag}{Format.format_float(self.size)}"
 
 
 @dataclass
@@ -38,7 +38,7 @@ class AssValidTagXShadow(AssTagXShadow):
         self.__size = 0 if value < 0 else value
 
     def __str__(self):
-        return f"\\{self.tag}{self.size}"
+        return f"\\{self.tag}{Format.format_float(self.size)}"
 
 
 @dataclass
@@ -57,4 +57,4 @@ class AssValidTagYShadow(AssTagYShadow):
         self.__size = 0 if value < 0 else value
 
     def __str__(self):
-        return f"\\{self.tag}{self.size}"
+        return f"\\{self.tag}{Format.format_float(self.size)}"

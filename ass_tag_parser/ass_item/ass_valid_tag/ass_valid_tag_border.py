@@ -1,4 +1,5 @@
-from ..ass_tag_border import (AssTagBorder, AssTagXBorder, AssTagYBorder)
+from ass_tag_parser.ass_format import Format
+from ..ass_tag_border import AssTagBorder, AssTagXBorder, AssTagYBorder
 from dataclasses import dataclass
 
 
@@ -18,7 +19,8 @@ class AssValidTagBorder(AssTagBorder):
         self.__size = 0 if value < 0 else value
 
     def __str__(self):
-        return f"\\{self.tag}{self.size}"
+        return f"\\{self.tag}{Format.format_float(self.size)}"
+
 
 @dataclass
 class AssValidTagXBorder(AssTagXBorder):
@@ -36,7 +38,8 @@ class AssValidTagXBorder(AssTagXBorder):
         self.__size = 0 if value < 0 else value
 
     def __str__(self):
-        return f"\\{self.tag}{self.size}"
+        return f"\\{self.tag}{Format.format_float(self.size)}"
+
 
 @dataclass
 class AssValidTagYBorder(AssTagYBorder):
@@ -54,4 +57,4 @@ class AssValidTagYBorder(AssTagYBorder):
         self.__size = 0 if value < 0 else value
 
     def __str__(self):
-        return f"\\{self.tag}{self.size}"
+        return f"\\{self.tag}{Format.format_float(self.size)}"

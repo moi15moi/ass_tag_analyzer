@@ -1,5 +1,6 @@
-from ..ass_tag_fade import (AssTagFade, AssTagFadeComplex)
+from ..ass_tag_fade import AssTagFade, AssTagFadeComplex
 from dataclasses import dataclass
+
 
 @dataclass
 class AssValidTagFade(AssTagFade):
@@ -8,7 +9,6 @@ class AssValidTagFade(AssTagFade):
 
     def __str__(self):
         return f"\\{self.tag}({self.time1},{self.time2})"
-
 
 
 @dataclass
@@ -23,4 +23,3 @@ class AssValidTagFadeComplex(AssTagFadeComplex):
 
     def __str__(self):
         return f"\\{self.tag}({self.alpha1},{self.alpha2},{self.alpha3},{self.time1},{self.time2},{self.time3},{self.time4})"
-

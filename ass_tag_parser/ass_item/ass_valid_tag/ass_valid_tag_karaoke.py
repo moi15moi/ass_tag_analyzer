@@ -1,6 +1,5 @@
-from ..ass_tag_karaoke import (AssTagKaraoke, AssTagKaraokeFill, AssTagKaraokeOutline)
+from ..ass_tag_karaoke import AssTagKaraoke, AssTagKaraokeFill, AssTagKaraokeOutline
 from dataclasses import dataclass
-
 
 
 @dataclass
@@ -19,7 +18,6 @@ class AssValidTagKaraokeFill(AssTagKaraokeFill):
         if self.is_short_tag:
             return f"\\{self.short_tag}{self.duration // 10}"
         return f"\\{self.tag}{self.duration // 10}"
-
 
 
 @dataclass

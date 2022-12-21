@@ -1,5 +1,7 @@
-from ..ass_tag_blur import (AssTagBlurEdges, AssTagBlurEdgesGauss)
+from ass_tag_parser.ass_format import Format
+from ..ass_tag_blur import AssTagBlurEdges, AssTagBlurEdgesGauss
 from dataclasses import dataclass
+
 
 @dataclass
 class AssValidTagBlurEdges(AssTagBlurEdges):
@@ -7,6 +9,7 @@ class AssValidTagBlurEdges(AssTagBlurEdges):
 
     def __str__(self):
         return f"\\{self.tag}{self.weight}"
+
 
 @dataclass
 class AssValidTagBlurEdgesGauss(AssTagBlurEdgesGauss):
@@ -24,4 +27,4 @@ class AssValidTagBlurEdgesGauss(AssTagBlurEdgesGauss):
         self.__weight = 0 if value < 0 else value
 
     def __str__(self):
-        return f"\\{self.tag}{self.weight}"
+        return f"\\{self.tag}{Format.format_float(self.weight)}"

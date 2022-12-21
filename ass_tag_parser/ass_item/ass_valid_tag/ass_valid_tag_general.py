@@ -1,24 +1,33 @@
 from ass_tag_parser.ass_item.ass_item import AssItem
+from ass_tag_parser.ass_format import Format
 from ..ass_tag_general import (
-    AssTagAlignment,
     AssTagAnimation,
-    AssTagBaselineOffset, 
+    AssTagBaselineOffset,
     AssTagBold,
-    AssTagDraw, AssTagFontEncoding, AssTagFontName, AssTagFontSize, AssTagItalic, AssTagLetterSpacing, AssTagResetStyle, AssTagRotationOrigin, AssTagStrikeout, AssTagUnderline
+    AssTagDraw,
+    AssTagFontEncoding,
+    AssTagFontName,
+    AssTagFontSize,
+    AssTagItalic,
+    AssTagLetterSpacing,
+    AssTagResetStyle,
+    AssTagRotationOrigin,
+    AssTagStrikeout,
+    AssTagUnderline,
 )
 from dataclasses import dataclass
 from typing import List, Optional
 
 
-from ...ass_type_parser import strip_whitespace
+from ass_tag_parser.ass_type_parser import TypeParser
+
 
 @dataclass
 class AssValidTagBold(AssTagBold):
     __weight: int
 
-    def __init__(self, weight: float):
+    def __init__(self, weight: int):
         self.weight = weight
-
 
     @property
     def weight(self):
@@ -32,8 +41,11 @@ class AssValidTagBold(AssTagBold):
         self.__weight = weight
 
     def __str__(self):
-        return f"\\{self.tag}{self.weight}"
+        weight = self.weight
+        weight = 0 if weight == 400 else weight
+        weight = 1 if weight == 700 else weight
 
+        return f"\\{self.tag}{weight}"
 
 
 @dataclass
@@ -52,7 +64,6 @@ class AssValidTagUnderline(AssTagUnderline):
         return f"\\{self.tag}{int(self.enabled)}"
 
 
-
 @dataclass
 class AssValidTagStrikeout(AssTagStrikeout):
     enabled: bool
@@ -61,13 +72,11 @@ class AssValidTagStrikeout(AssTagStrikeout):
         return f"\\{self.tag}{int(self.enabled)}"
 
 
-
-
 @dataclass
 class AssValidTagFontName(AssTagFontName):
     __name: str
 
-    def __init__(self, name: int):
+    def __init__(self, name: str):
         self.name = name
 
     @property
@@ -76,7 +85,7 @@ class AssValidTagFontName(AssTagFontName):
 
     @name.setter
     def name(self, name: str):
-        self.__name = strip_whitespace(name)
+        self.__name = TypeParser.strip_whitespace(name)
 
     def __str__(self):
         return f"\\{self.tag}{self.name}"
@@ -90,15 +99,12 @@ class AssValidTagFontEncoding(AssTagFontEncoding):
         return f"\\{self.tag}{self.encoding}"
 
 
-
 @dataclass
 class AssValidTagFontSize(AssTagFontSize):
     size: float
 
     def __str__(self):
-        return f"\\{self.tag}{self.size}"
-
-
+        return f"\\{self.tag}{Format.format_float(self.size)}"
 
 
 @dataclass
@@ -106,56 +112,17 @@ class AssValidTagLetterSpacing(AssTagLetterSpacing):
     spacing: float
 
     def __str__(self):
-        return f"\\{self.tag}{self.spacing}"
-
-
-
-
-
-@dataclass
-class AssValidTagAlignment(AssTagAlignment):
-    __alignment: int
-
-    def __init__(self, alignment: int, is_legacy_tag: bool = False):
-        self.is_legacy_tag = is_legacy_tag
-        self.alignment = alignment
-
-
-    @property
-    def alignment(self):
-        return self.__alignment
-
-    @alignment.setter
-    def alignment(self, alignment: int):
-        if self.is_legacy_tag:
-            # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L553
-            if 1 <= alignment <= 11:
-                self.__alignment = alignment
-            else:
-                raise ValueError(
-                    "Legacy Alignment need to be between 1 and 11 inclusive"
-                )
-        else:
-            # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_parse.c#L543
-            if 1 <= alignment <= 9:
-                self.__alignment = alignment
-            else:
-                raise ValueError(
-                    "Alignment need to be between 1 and 9 inclusive"
-                )
-    def __str__(self):
-        if self.is_legacy_tag:
-            return f"\\{self.legacy_tag}{self.alignment}"
-        return f"\\{self.tag}{self.alignment}"
+        return f"\\{self.tag}{Format.format_float(self.spacing)}"
 
 
 @dataclass
 class AssValidTagResetStyle(AssTagResetStyle):
-    style: str
+    style: Optional[str] = None
 
     def __str__(self):
+        if self.style is None:
+            return f"\\{self.tag}"
         return f"\\{self.tag}{self.style}"
-
 
 
 @dataclass
@@ -166,26 +133,29 @@ class AssValidTagAnimation(AssTagAnimation):
     time2: Optional[int] = None
 
     def __str__(self):
-        tags_text = ','.join([str(tag) for tag in self.tags])
+        tags_text = ",".join([str(tag) for tag in self.tags])
 
         if (
             self.time1 is not None
             and self.time2 is not None
-            and self.acceleration is not None and self.acceleration != 1
+            and self.acceleration is not None
+            and self.acceleration != 1
         ):
-            return f"\\{self.tag}({self.time1},{self.time2},{self.acceleration},{tags_text})"
+            return f"\\{self.tag}({self.time1},{self.time2},{Format.format_float(self.acceleration)},{tags_text})"
         elif self.time1 is not None and self.time2 is not None:
             return f"\\{self.tag}({self.time1},{self.time2},{tags_text})"
+        elif self.acceleration is not None and self.acceleration != 1:
+            return f"\\{self.tag}({Format.format_float(self.acceleration)},{tags_text})"
         else:
             return f"\\{self.tag}({tags_text})"
+
 
 @dataclass
 class AssValidTagBaselineOffset(AssTagBaselineOffset):
     offset: float
 
     def __str__(self):
-        return f"\\{self.tag}{self.offset}"
-
+        return f"\\{self.tag}{Format.format_float(self.offset)}"
 
 
 @dataclass
@@ -194,9 +164,9 @@ class AssValidTagRotationOrigin(AssTagRotationOrigin):
     y: float
 
     def __str__(self):
-        return f"\\{self.tag}({self.x}, {self.y})"
-
-
+        return (
+            f"\\{self.tag}({Format.format_float(self.x)},{Format.format_float(self.y)})"
+        )
 
 
 @dataclass

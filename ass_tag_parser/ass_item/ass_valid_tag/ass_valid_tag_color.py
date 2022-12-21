@@ -1,8 +1,10 @@
-from ..ass_tag_color import (AssTagPrimaryColor, AssTagSecondaryColor, AssTagOutlineColor, AssTagBackgroundColor)
+from ..ass_tag_color import (
+    AssTagPrimaryColor,
+    AssTagSecondaryColor,
+    AssTagOutlineColor,
+    AssTagBackgroundColor,
+)
 from dataclasses import dataclass
-
-
-
 
 
 @dataclass
@@ -12,6 +14,8 @@ class AssValidTagPrimaryColor(AssTagPrimaryColor):
     blue: int
 
     def __str__(self):
+        if self.is_short_tag:
+            return f"\\{self.short_tag}&H{self.blue:02X}{self.green:02X}{self.red:02X}&"
         return f"\\{self.tag}&H{self.blue:02X}{self.green:02X}{self.red:02X}&"
 
 
@@ -23,7 +27,6 @@ class AssValidTagSecondaryColor(AssTagSecondaryColor):
 
     def __str__(self):
         return f"\\{self.tag}&H{self.blue:02X}{self.green:02X}{self.red:02X}&"
-
 
 
 @dataclass

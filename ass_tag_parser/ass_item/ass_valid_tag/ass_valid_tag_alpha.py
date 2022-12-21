@@ -1,6 +1,11 @@
-from ..ass_tag_alpha import (AssTagAlpha, AssTagPrimaryAlpha, AssTagSecondaryAlpha, AssTagOutlineAlpha, AssTagBackgroundAlpha)
+from ..ass_tag_alpha import (
+    AssTagAlpha,
+    AssTagPrimaryAlpha,
+    AssTagSecondaryAlpha,
+    AssTagOutlineAlpha,
+    AssTagBackgroundAlpha,
+)
 from dataclasses import dataclass
-
 
 
 @dataclass
@@ -18,6 +23,7 @@ class AssValidTagPrimaryAlpha(AssTagPrimaryAlpha):
     def __str__(self):
         return f"\\{self.tag}&H{self.value}&"
 
+
 @dataclass
 class AssValidTagSecondaryAlpha(AssTagSecondaryAlpha):
     value: int
@@ -25,12 +31,14 @@ class AssValidTagSecondaryAlpha(AssTagSecondaryAlpha):
     def __str__(self):
         return f"\\{self.tag}&H{self.value}&"
 
+
 @dataclass
 class AssValidTagOutlineAlpha(AssTagOutlineAlpha):
     value: int
 
     def __str__(self):
         return f"\\{self.tag}&H{self.value}&"
+
 
 @dataclass
 class AssValidTagBackgroundAlpha(AssTagBackgroundAlpha):

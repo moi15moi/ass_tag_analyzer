@@ -1,7 +1,9 @@
-from ..ass_tag_clip import (AssTagClipRectangle, AssTagClipVector)
+from ass_tag_parser.ass_format import Format
+from ..ass_tag_clip import AssTagClipRectangle, AssTagClipVector
 from ...ass_draw.draw_struct import AssDrawCmd
 from dataclasses import dataclass
 from typing import List, Optional
+
 
 @dataclass
 class AssValidTagClipRectangle(AssTagClipRectangle):
@@ -11,7 +13,7 @@ class AssValidTagClipRectangle(AssTagClipRectangle):
     y2: float
 
     def __str__(self):
-        return f"\\{self.tag}({self.x1},{self.y1},{self.x2},{self.y2})"
+        return f"\\{self.tag}({Format.format_float(self.x1)},{Format.format_float(self.y1)},{Format.format_float(self.x2)},{Format.format_float(self.y2)})"
 
 
 @dataclass
@@ -21,5 +23,4 @@ class AssValidTagClipVector(AssTagClipVector):
 
     def __str__(self):
         raise Exception("Not implemented")
-        #return f"\\{self.tag}({self.x1}, {self.y1}, {self.x2}, {self.y2})"
-
+        # return f"\\{self.tag}({self.x1}, {self.y1}, {self.x2}, {self.y2})"
