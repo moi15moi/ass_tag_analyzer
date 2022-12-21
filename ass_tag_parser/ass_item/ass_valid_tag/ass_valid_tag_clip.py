@@ -7,13 +7,13 @@ from typing import List, Optional
 
 @dataclass
 class AssValidTagClipRectangle(AssTagClipRectangle):
-    x1: float
-    y1: float
-    x2: float
-    y2: float
+    x1: int
+    y1: int
+    x2: int
+    y2: int
 
     def __str__(self):
-        return f"\\{self.tag}({Format.format_float(self.x1)},{Format.format_float(self.y1)},{Format.format_float(self.x2)},{Format.format_float(self.y2)})"
+        return f"\\{self.tag}({self.x1},{self.y1},{self.x2},{self.y2})"
 
 
 @dataclass
