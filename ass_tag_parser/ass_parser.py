@@ -160,7 +160,7 @@ def parse_tags(text: str) -> List[AssTag]:
                     param += c
                     j += 1
 
-            TypeParser.strip_whitespace(param)
+            param = TypeParser.strip_whitespace(param)
 
             temp_j = j
 
@@ -174,7 +174,7 @@ def parse_tags(text: str) -> List[AssTag]:
                         params.append(s)
                     param = param[i + 1 :] if i + 1 < len(param) else ""
                 else:
-                    TypeParser.strip_whitespace(param)
+                    param = TypeParser.strip_whitespace(param)
                     if len(param) != 0:
                         params.append(param)
                     param = ""
@@ -347,7 +347,7 @@ def parse_tags(text: str) -> List[AssTag]:
             try:
                 an_tag = AssValidTagAlignment(Alignment(TypeParser.int_str_to_int(p)))
             except:
-                an_tag = AssInvalidTagAlignment(p)
+                an_tag = AssInvalidTagAlignment(p, False)
 
             if not any(isinstance(tag, AssTagAlignment) for tag in tags):
                 tags.append(an_tag)
@@ -601,7 +601,7 @@ def parse_tags(text: str) -> List[AssTag]:
             p = ""
 
             m_animStart = m_animEnd = None
-            m_animAccel = None
+            m_animAccel = 1.0
 
             if len(params) == 1:
                 p = params[0]
@@ -618,10 +618,10 @@ def parse_tags(text: str) -> List[AssTag]:
                 m_animAccel = TypeParser.float_str_to_float(params[2])
                 p = params[3]
 
-            tags = parse_tags(p)
+            t_tags = parse_tags(p)
 
             # TODO Verify recursivity
-            tags.append(AssValidTagAnimation(tags, m_animAccel, m_animStart, m_animEnd))
+            tags.append(AssValidTagAnimation(t_tags, m_animAccel, m_animStart, m_animEnd))
         elif cmd == "u":
             n = TypeParser.int_str_to_int(p)
 
@@ -656,7 +656,7 @@ def parse_tags(text: str) -> List[AssTag]:
     return tags
 
 
-def parse_ass(text: str) -> list[AssItem]:
+def parse_ass(text: str) -> List[AssItem]:
     # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_render.c#L2044-L2064
     ass_items = []
 
@@ -749,5 +749,5 @@ def parse_ass(text: str) -> list[AssItem]:
 """
 
 
-def tags_to_line(tags: List[AssTag]):
+def tags_to_text(tags: List[AssTag]):
     return "".join(str(tag) for tag in tags)
