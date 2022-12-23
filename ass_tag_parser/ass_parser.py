@@ -365,7 +365,7 @@ def parse_tags(text: str) -> List[AssTag]:
 
         elif cmd == "blur":
             if len(p) == 0:
-                tags.append(AssInvalidTagBlurEdgesGauss(p))
+                tags.append(AssValidTagBlurEdgesGauss(0.0))
             else:
                 tags.append(AssValidTagBlurEdgesGauss(TypeParser.float_str_to_float(p)))
 
@@ -377,7 +377,7 @@ def parse_tags(text: str) -> List[AssTag]:
 
         elif cmd == "be":
             if len(p) == 0:
-                tags.append(AssInvalidTagBlurEdges(p))
+                tags.append(AssValidTagBlurEdges(0.0))
             else:
                 tags.append(AssValidTagBlurEdges(TypeParser.float_str_to_float(p)))
 
@@ -430,12 +430,12 @@ def parse_tags(text: str) -> List[AssTag]:
                 tags.append(AssValidTagFade(t1, t2))
         elif cmd == "fax":
             if len(p) == 0:
-                tags.append(AssInvalidTagXShear(p))
+                tags.append(AssValidTagXShear(0.0))
             else:
                 tags.append(AssValidTagXShear(TypeParser.float_str_to_float(p)))
         elif cmd == "fay":
             if len(p) == 0:
-                tags.append(AssInvalidTagYShear(p))
+                tags.append(AssValidTagYShear(0.0))
             else:
                 tags.append(AssValidTagYShear(TypeParser.float_str_to_float(p)))
         elif cmd == "fe":
@@ -453,24 +453,24 @@ def parse_tags(text: str) -> List[AssTag]:
 
         elif cmd == "frx":
             if len(p) == 0:
-                tags.append(AssInvalidTagXRotation(p))
+                tags.append(AssValidTagXRotation(0.0))
             else:
                 tags.append(AssValidTagXRotation(TypeParser.float_str_to_float(p)))
         elif cmd == "fry":
             if len(p) == 0:
-                tags.append(AssInvalidTagYRotation(p))
+                tags.append(AssValidTagYRotation(0.0))
             else:
                 tags.append(AssValidTagYRotation(TypeParser.float_str_to_float(p)))
         elif cmd == "frz":
             if len(p) == 0:
-                tags.append(AssInvalidTagZRotation(p))
+                tags.append(AssInvalidTagZRotation(p, False))
             else:
                 tags.append(
                     AssValidTagZRotation(False, TypeParser.float_str_to_float(p))
                 )
         elif cmd == "fr":
             if len(p) == 0:
-                tags.append(AssInvalidTagZRotation(True))
+                tags.append(AssInvalidTagZRotation(p, True))
             else:
                 tags.append(
                     AssValidTagZRotation(True, TypeParser.float_str_to_float(p))
@@ -514,7 +514,7 @@ def parse_tags(text: str) -> List[AssTag]:
             if len(p) == 0:
                 n = 100
 
-            tags.append(AssValidTagKaraokeFill(n * 10, short_tag))
+            tags.append(AssValidTagKaraokeFill(short_tag, n * 10))
 
         elif cmd == "ko":
             n = TypeParser.float_str_to_float(p)
@@ -593,7 +593,7 @@ def parse_tags(text: str) -> List[AssTag]:
             n = TypeParser.int_str_to_int(p)
 
             if len(p) == 0 or n not in (0, 1):
-                tags.append(AssInvalidTagStrikeout())
+                tags.append(AssInvalidTagStrikeout(p))
             else:
                 tags.append(AssValidTagStrikeout(bool(n)))
 
