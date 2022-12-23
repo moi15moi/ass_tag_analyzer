@@ -1,4 +1,4 @@
-from .ass_item import AssTagListOpening, AssTagListEnding, AssText, AssComment
+from .ass_item import AssItem, AssTagListOpening, AssTagListEnding, AssText, AssComment
 from .ass_tag_alignment import Alignment, LegacyAlignment, AssTagAlignment
 from .ass_tag_alpha import (
     AssTagAlpha,
