@@ -59,7 +59,7 @@ class TypeParser:
         try:
             return float(match.group(0))
         except (AttributeError, ValueError):
-            return 0
+            return 0.0
 
     @staticmethod
     def int_str_to_int(text: str) -> int:
