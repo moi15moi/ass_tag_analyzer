@@ -4,11 +4,6 @@ from dataclasses import dataclass
 
 
 @dataclass
-class AssInvalidTagFontScale(AssTagFontScale, AssInvalidTag):
-    pass
-
-
-@dataclass
 class AssInvalidTagFontXScale(AssTagFontXScale, AssInvalidTag):
     pass
 

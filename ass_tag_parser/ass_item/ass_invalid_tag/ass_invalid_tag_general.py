@@ -1,39 +1,20 @@
 from .ass_invalid_tag import AssInvalidTag
 from ..ass_tag_general import (
-    AssTagAnimation,
-    AssTagBaselineOffset,
     AssTagBold,
-    AssTagDraw,
     AssTagFontEncoding,
     AssTagFontName,
     AssTagFontSize,
     AssTagItalic,
     AssTagLetterSpacing,
-    AssTagResetStyle,
-    AssTagRotationOrigin,
     AssTagStrikeout,
     AssTagUnderline,
 )
 from dataclasses import dataclass
 
 
-@dataclass
-class AssInvalidTagAnimation(AssTagAnimation, AssInvalidTag):
-    pass
-
-
-@dataclass
-class AssInvalidTagBaselineOffset(AssTagBaselineOffset, AssInvalidTag):
-    pass
-
 
 @dataclass
 class AssInvalidTagBold(AssTagBold, AssInvalidTag):
-    pass
-
-
-@dataclass
-class AssInvalidTagDraw(AssTagDraw, AssInvalidTag):
     pass
 
 
@@ -62,14 +43,7 @@ class AssInvalidTagLetterSpacing(AssTagLetterSpacing, AssInvalidTag):
     pass
 
 
-@dataclass
-class AssInvalidTagResetStyle(AssTagResetStyle, AssInvalidTag):
-    pass
 
-
-@dataclass
-class AssInvalidTagRotationOrigin(AssTagRotationOrigin, AssInvalidTag):
-    pass
 
 
 @dataclass
