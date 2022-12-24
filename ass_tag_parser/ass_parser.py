@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from ass_tag_parser.ass_item import (
     AssTagAlignment,
@@ -110,6 +110,7 @@ from ass_tag_parser.ass_item.ass_invalid_tag import (
     AssInvalidTagZRotation,
 )
 from ass_tag_parser.ass_item.ass_item import (
+    AssDraw,
     AssItem,
     AssTag,
     AssTagListEnding,
@@ -121,7 +122,7 @@ from ass_tag_parser.ass_item.ass_item import (
 from ass_tag_parser.ass_type_parser import TypeParser
 
 
-def parse_tags(text: str) -> List[AssTag]:
+def parse_tags(text: str, is_draw: bool) -> Tuple[List[AssTag], bool]:
     # https://github.com/libass/libass/blob/5f57443f1784434fe8961275da08be6d6febc688/libass/ass_parse.c#L242-L869
     # https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l1383
     tags: List[AssTag] = []
@@ -395,10 +396,10 @@ def parse_tags(text: str) -> List[AssTag]:
             invert = cmd == "iclip"
 
             if len(params) == 1:
-                # https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l522
-                raise Exception("Not implemented")
+                tags.append(AssValidTagClipVector(invert, params[0]))
             elif len(params) == 2:
-                raise Exception("Not implemented")
+                scale = max(TypeParser.int_str_to_int(p), 1)
+                tags.append(AssValidTagClipVector(invert, params[1], scale))
             elif len(params) == 4:
                 x1 = TypeParser.int_str_to_int(params[0])
                 y1 = TypeParser.int_str_to_int(params[1])
@@ -567,7 +568,10 @@ def parse_tags(text: str) -> List[AssTag]:
                 tags.append(AssValidTagPosition(x, y))
 
         elif cmd == "p":
-            tags.append(AssValidTagDraw(TypeParser.int_str_to_int(p)))
+            draw_tag = AssValidTagDraw(TypeParser.int_str_to_int(p))
+            tags.append(draw_tag)
+
+            is_draw = draw_tag.scale != 0
 
         elif cmd == "q":
             if len(p) == 0:
@@ -618,10 +622,12 @@ def parse_tags(text: str) -> List[AssTag]:
                 m_animAccel = TypeParser.float_str_to_float(params[2])
                 p = params[3]
 
-            t_tags = parse_tags(p)
+            t_tags, is_draw = parse_tags(p, is_draw)
 
             # TODO Verify recursivity
-            tags.append(AssValidTagAnimation(t_tags, m_animAccel, m_animStart, m_animEnd))
+            tags.append(
+                AssValidTagAnimation(t_tags, m_animAccel, m_animStart, m_animEnd)
+            )
         elif cmd == "u":
             n = TypeParser.int_str_to_int(p)
 
@@ -653,12 +659,18 @@ def parse_tags(text: str) -> List[AssTag]:
 
         i = j
 
-    return tags
+    return tags, is_draw
 
 
 def parse_ass(text: str) -> List[AssItem]:
     # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_render.c#L2044-L2064
+    def get_class_type():
+        if is_draw:
+            return AssDraw
+        return AssText
+
     ass_items = []
+    is_draw = False
 
     i = 0
     while i < len(text):
@@ -667,7 +679,7 @@ def parse_ass(text: str) -> List[AssItem]:
 
         if find_left_bracket_index == -1:
             # There is no tag to parse
-            ass_text = AssText(text[i:])
+            ass_text = get_class_type()(text[i:])
             ass_items.append(ass_text)
 
             i = len(text)
@@ -684,7 +696,7 @@ def parse_ass(text: str) -> List[AssItem]:
                 # There is no tag to parse
                 # Ex: This is a{n example
 
-                ass_text = AssText(text[i:])
+                ass_text = get_class_type()(text[i:])
                 ass_items.append(ass_text)
 
                 i = len(text)
@@ -696,17 +708,18 @@ def parse_ass(text: str) -> List[AssItem]:
                 if i < find_left_bracket_index:
                     # There is some text to parse before the {
                     # Ex: This is a{\\b1}
-                    ass_text = AssText(text[i:find_left_bracket_index])
+                    ass_text = get_class_type()(text[i:find_left_bracket_index])
                     ass_items.append(ass_text)
 
                 tag_list_opening = AssTagListOpening()
                 ass_items.append(tag_list_opening)
 
-                ass_items.extend(
-                    parse_tags(
-                        text[find_left_bracket_index + 1 : find_right_bracket_index],
-                    )
+                tags, is_draw = parse_tags(
+                    text[find_left_bracket_index + 1 : find_right_bracket_index],
+                    is_draw,
                 )
+
+                ass_items.extend(tags)
 
                 tag_list_ending = AssTagListEnding()
                 ass_items.append(tag_list_ending)
@@ -714,39 +727,6 @@ def parse_ass(text: str) -> List[AssItem]:
                 i = find_right_bracket_index + 1
 
     return ass_items
-
-
-"""def parse_ass(text: str) -> List[AssItem]:
-    # https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l2153
-    ass_items = []
-
-    ass_items.append(AssTagListOpening())
-
-    while len(text) != 0:
-        print(text)
-        if text[0] == '{' and (i := text.find("}")) > 0:
-            ass_items.append(AssTagListOpening())
-
-            ass_items.append(parse_tags(text[1:i], 1, False))
-
-            ass_items.append(AssTagListEnding())
-
-            print(i)
-            print(text[i+1:])
-
-            text = text[i+1:]
-        else:
-            bracket_index = text.find("{")
-
-            if bracket_index == -1:
-                ass_items.append(AssText(text))
-                text = ""
-
-    ass_items.append(AssTagListEnding())
-
-
-    return ass_items
-"""
 
 
 def tags_to_text(tags: List[AssTag]):
