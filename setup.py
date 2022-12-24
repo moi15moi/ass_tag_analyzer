@@ -29,8 +29,8 @@ setup(
     author_email="moi15moismokerlolilol@gmail.com",
     description="Parse .ass tags.",
     long_description_content_type="text/markdown",
-    version=find_version("ass_tag_parser", "__init__.py"),
-    packages=["ass_tag_parser"],
+    version=find_version("ass_tag_analyzer", "__init__.py"),
+    packages=["ass_tag_analyzer"],
     python_requires=">=3.8",
     extras_require={
         "dev": [

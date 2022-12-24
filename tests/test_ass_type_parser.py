@@ -1,4 +1,4 @@
-from ass_tag_parser.ass_type_parser import TypeParser
+from ass_tag_analyzer.ass_type_parser import TypeParser
 
 
 def test_color_arg():

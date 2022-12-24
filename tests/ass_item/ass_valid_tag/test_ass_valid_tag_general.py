@@ -1,4 +1,4 @@
-from ass_tag_parser.ass_item.ass_valid_tag.ass_valid_tag_general import (
+from ass_tag_analyzer.ass_item.ass_valid_tag.ass_valid_tag_general import (
     AssValidTagAnimation,
     AssValidTagBaselineOffset,
     AssValidTagBold,
