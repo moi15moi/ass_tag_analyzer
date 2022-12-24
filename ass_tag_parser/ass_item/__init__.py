@@ -49,3 +49,5 @@ from .ass_tag_wrap_style import AssTagWrapStyle, WrapStyle
 
 from .ass_valid_tag import *
 from .ass_invalid_tag import *
+
+__version__ = "0.0.1"
