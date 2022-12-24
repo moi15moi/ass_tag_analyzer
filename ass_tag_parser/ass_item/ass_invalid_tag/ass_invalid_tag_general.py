@@ -12,7 +12,6 @@ from ..ass_tag_general import (
 from dataclasses import dataclass
 
 
-
 @dataclass
 class AssInvalidTagBold(AssTagBold, AssInvalidTag):
     pass
@@ -41,9 +40,6 @@ class AssInvalidTagItalic(AssTagItalic, AssInvalidTag):
 @dataclass
 class AssInvalidTagLetterSpacing(AssTagLetterSpacing, AssInvalidTag):
     pass
-
-
-
 
 
 @dataclass
