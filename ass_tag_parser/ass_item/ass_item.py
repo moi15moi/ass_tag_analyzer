@@ -36,6 +36,14 @@ class AssComment(AssItem):
         return self.text
 
 
+@dataclass
+class AssDraw(AssItem):
+    text: str
+
+    def __str__(self):
+        return self.text
+
+
 class AssTag(AssItem):
     @property
     @abstractmethod
