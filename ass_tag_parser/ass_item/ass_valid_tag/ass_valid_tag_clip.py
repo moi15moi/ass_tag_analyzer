@@ -1,8 +1,5 @@
-from ass_tag_parser.ass_format import Format
 from ..ass_tag_clip import AssTagClipRectangle, AssTagClipVector
-from ...ass_draw.draw_struct import AssDrawCmd
 from dataclasses import dataclass
-from typing import List, Optional
 
 
 @dataclass
@@ -18,9 +15,14 @@ class AssValidTagClipRectangle(AssTagClipRectangle):
 
 @dataclass
 class AssValidTagClipVector(AssTagClipVector):
-    scale: Optional[int]
-    path: List[AssDrawCmd]
+    """
+    If you wanna parse an Vector Clip, see the PyonFX library.
+    Especially the Shape module: https://pyonfx.readthedocs.io/en/latest/reference/shape.html
+    """
+    path: str
+    scale: int = 1
 
     def __str__(self):
-        raise Exception("Not implemented")
-        # return f"\\{self.tag}({self.x1}, {self.y1}, {self.x2}, {self.y2})"
+        if self.scale == 1:
+            return f"\\{self.tag}({self.path})"
+        return f"\\{self.tag}({self.scale},{self.path})"
