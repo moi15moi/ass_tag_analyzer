@@ -19,6 +19,7 @@ class AssValidTagClipVector(AssTagClipVector):
     If you wanna parse an Vector Clip, see the PyonFX library.
     Especially the Shape module: https://pyonfx.readthedocs.io/en/latest/reference/shape.html
     """
+
     path: str
     scale: int = 1
 

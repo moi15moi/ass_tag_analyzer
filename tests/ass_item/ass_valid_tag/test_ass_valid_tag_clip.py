@@ -11,6 +11,15 @@ def test_ass_valid_tag_clip_rectangle():
 
 
 def test_ass_valid_tag_clip_vector():
-    assert str(AssValidTagClipVector(True, "m 187 365 l 215 341 249 301", 20)) == "\\iclip(20,m 187 365 l 215 341 249 301)"
-    assert str(AssValidTagClipVector(True, "m 187 365 l 215 341 249 301")) == "\\iclip(m 187 365 l 215 341 249 301)"
-    assert str(AssValidTagClipVector(False, "m 187 365 l 215 341 249 301")) == "\\clip(m 187 365 l 215 341 249 301)"
+    assert (
+        str(AssValidTagClipVector(True, "m 187 365 l 215 341 249 301", 20))
+        == "\\iclip(20,m 187 365 l 215 341 249 301)"
+    )
+    assert (
+        str(AssValidTagClipVector(True, "m 187 365 l 215 341 249 301"))
+        == "\\iclip(m 187 365 l 215 341 249 301)"
+    )
+    assert (
+        str(AssValidTagClipVector(False, "m 187 365 l 215 341 249 301"))
+        == "\\clip(m 187 365 l 215 341 249 301)"
+    )

@@ -1,5 +1,4 @@
 class Format:
-
     @staticmethod
     def _format_float(number: float) -> str:
         """
