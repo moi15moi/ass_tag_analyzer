@@ -1647,4 +1647,4 @@ import ass_tag_parser
     ],
 )
 def test_parse_tag(text: str, expected_result: List[ass_tag_parser.AssItem]):
-    assert ass_tag_parser.parse_ass(text) == expected_result
+    assert ass_tag_parser.parse_line(text) == expected_result

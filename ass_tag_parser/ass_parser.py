@@ -102,8 +102,21 @@ from ass_tag_parser.ass_type_parser import TypeParser
 
 
 def parse_tags(text: str, is_draw: bool) -> Tuple[List[AssTag], bool]:
-    # https://github.com/libass/libass/blob/5f57443f1784434fe8961275da08be6d6febc688/libass/ass_parse.c#L242-L869
-    # https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l1383
+    """
+    Inpired by:
+        - https://github.com/libass/libass/blob/5f57443f1784434fe8961275da08be6d6febc688/libass/ass_parse.c#L242-L869
+        - https://sourceforge.net/p/guliverkli2/code/HEAD/tree/src/subtitles/RTS.cpp#l1383
+
+
+    Parameters:
+        text (str): An string of tags.
+            Ex: "\\blur1\\pos(604, 20)"
+    Returns:
+        An tuple of two element
+            1- An list of AssTag which represent the text
+            2- An and bool. If true, then the text right after the tags will be an AssText, if false, then the text right after the tags will be an AssDraw
+    """
+
     tags: List[AssTag] = []
     i = 0
 
@@ -641,8 +654,15 @@ def parse_tags(text: str, is_draw: bool) -> Tuple[List[AssTag], bool]:
     return tags, is_draw
 
 
-def parse_ass(text: str) -> List[AssItem]:
-    # https://github.com/libass/libass/blob/44f6532daf5eb13cb1aa95f5449a77b5df1dd85b/libass/ass_render.c#L2044-L2064
+def parse_line(text: str) -> List[AssItem]:
+    """
+    Parameters:
+        text (str): A .ass line
+    Returns:
+        An list of AssItem which represent the line
+            Ex: "{\\blur1\\pos(604, 20)}Example"
+    """
+
     def get_class_type():
         if is_draw:
             return AssDraw
@@ -708,5 +728,11 @@ def parse_ass(text: str) -> List[AssItem]:
     return ass_items
 
 
-def tags_to_text(tags: List[AssTag]):
+def ass_item_to_text(tags: List[AssItem]):
+    """
+    Parameters:
+        tags (List[AssItem]): A list of tags
+    Returns:
+        An string that represent the AssItem list
+    """
     return "".join(str(tag) for tag in tags)
