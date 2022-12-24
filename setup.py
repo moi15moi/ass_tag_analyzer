@@ -19,11 +19,11 @@ def find_version(*file_paths):
 
 
 setup(
-    name="AssTagParser",
-    url="https://github.com/moi15moi/AssTagParser/",
+    name="ass_tag_analyzer",
+    url="https://github.com/moi15moi/ass_tag_parser/",
     project_urls={
-        "Source": "https://github.com/moi15moi/AssTagParser/",
-        "Tracker": "https://github.com/moi15moi/AssTagParser/issues/",
+        "Source": "https://github.com/moi15moi/ass_tag_parser/",
+        "Tracker": "https://github.com/moi15moi/ass_tag_parser/issues/",
     },
     author="moi15moi",
     author_email="moi15moismokerlolilol@gmail.com",
