@@ -30,8 +30,7 @@ setup(
     description="Parse .ass tags.",
     long_description_content_type="text/markdown",
     version=find_version("ass_tag_parser", "__init__.py"),
-    #packages=["ass_tag_parser"] + ["ass_tag_parser." + pkg for pkg in find_packages('ass_tag_parser')],
-    packages=["ass_tag_parser", "ass_tag_parser.ass_item"],
+    packages=["ass_tag_parser"],
     python_requires=">=3.8",
     extras_require={
         "dev": [
