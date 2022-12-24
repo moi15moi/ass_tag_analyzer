@@ -29,14 +29,6 @@ class AssText(AssItem):
 
 
 @dataclass
-class AssComment(AssItem):
-    text: str
-
-    def __str__(self):
-        return self.text
-
-
-@dataclass
 class AssDraw(AssItem):
     text: str
 
