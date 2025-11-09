@@ -9,10 +9,10 @@ class TypeParser:
 
     """
     From python documentation
-        \s
+        \\s
             For Unicode (str) patterns:
-                [...]. If the ASCII flag is used, only [ \t\n\r\f\v] is matched.
-        \d
+                [...]. If the ASCII flag is used, only [ \\t\\n\\r\\f\\v] is matched.
+        \\d
             For Unicode (str) patterns:
                 [...]. If the ASCII flag is used only [0-9] is matched.
     Libass
